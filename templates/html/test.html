@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+
+
+{% block css_files %}
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+{% endblock %}
+
+    <form action="{% url 'user:addUserProfile' %}" method="post">
+      <!-- Message input -->
+      <div class="form-outline mb-4">
+        <textarea class="form-control" id="form4Example3" rows="4"></textarea>
+        <label class="form-label" for="form4Example3"></label>
+      </div>
+
+      <!-- Checkbox -->
+      <div class="form-check d-flex justify-content-center mb-4">
+        <input class="form-check-input me-2" type="checkbox" value="" id="form4Example4" checked />
+        <label class="form-check-label" for="form4Example4">
+          Create models if not exist
+        </label>
+      </div>
+
+      <!-- Submit button -->
+        <div class="form-check d-flex justify-content-center mb-4">
+        <button type="submit" class="btn btn-primary btn-block mb-4">
+            Create UserProfile
+        </button>
+        </div>
+    </form>
+
+{% endblock %}
