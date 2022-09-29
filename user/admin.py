@@ -1,6 +1,9 @@
+import io
 from http.client import HTTPResponse
+import pandas as pd
 
 from django.contrib import admin
+from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path
@@ -13,7 +16,7 @@ from .models import UserProfile
 class UserProfileAdmin(admin.ModelAdmin):
     #list_display = ["user", "dealership"]
     # fields = ("user", "dealership")
-    #add_form_template = "test.html"
+    add_form_template = "test.html"
 
     class Meta:
         model = UserProfile
@@ -32,10 +35,16 @@ class UserProfileAdmin(admin.ModelAdmin):
         else:  # POST
 
             text = request.POST.get("formTextArea")
-            print(text)
-            splittedText = text.split(",")
-            for element in splittedText:
-                print(element)
+            data = io.StringIO(text)
+            df = pd.read_csv(data, sep=",")
+            """textLines = text.split("\n")
+            for i in range(len(textLines)):
+                textLines[i] = textLines[i].split(",")"""
+            print(df)
+
+            print(User.objects.filter(id=1).exists())
+            print(User.objects.filter(id=2).exists())
+
 
             """try:
                 newUserProfile = UserProfile.objects.create(user, dealership, isActive=True, firstName=user.username,
@@ -43,6 +52,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             except:
                 print("hata")"""
             return HttpResponseRedirect("../../")
+
 
     def my_view(self, request):
         # ...
