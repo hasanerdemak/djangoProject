@@ -11,7 +11,7 @@ from .models import UserProfile
 
 # Register your models here.
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ["user", "dealership"]
+    #list_display = ["user", "dealership"]
     # fields = ("user", "dealership")
     add_form_template = "test.html"
 
