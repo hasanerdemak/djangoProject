@@ -8,13 +8,16 @@ from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path
 
-from dealership.models import Dealership
+from dealership.models import Dealership, DealershipGroup
 from .models import UserProfile
+
+import random
+import string
 
 
 # Register your models here.
 class UserProfileAdmin(admin.ModelAdmin):
-    #list_display = ["user", "dealership"]
+    # list_display = ["user", "dealership"]
     # fields = ("user", "dealership")
     add_form_template = "test.html"
 
@@ -36,15 +39,44 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             text = request.POST.get("formTextArea")
             data = io.StringIO(text)
-            df = pd.read_csv(data, sep=",")
-            """textLines = text.split("\n")
-            for i in range(len(textLines)):
-                textLines[i] = textLines[i].split(",")"""
-            print(df)
+            userProfileTable = pd.read_csv(data, sep=",")
+            print(userProfileTable)
 
-            print(User.objects.filter(id=1).exists())
-            print(User.objects.filter(id=2).exists())
+            characters = string.ascii_letters + string.digits + string.punctuation
+            userProfileList = list()
 
+            for i in range(len(userProfileTable)):
+                row = userProfileTable.iloc[i]
+
+                if User.objects.filter(id=row['user']).exists():
+                    username = User.objects.get(id=row['user']).username
+                else:
+                    username = row['firstName'] + row['lastName']
+
+                userObject, created = User.objects.update_or_create(
+                    username= username,
+                    defaults={'email': row["email"],
+                              'password': ''.join(random.choice(characters) for i in range(8))},
+                )
+
+
+                if Dealership.objects.filter(id=row['dealership']).exists():
+                    dealershipName = Dealership.objects.get(id=row['dealership']).name
+                else:
+                    dealershipName = "D " + str(random.randint(3, 1000))
+
+                dealershipObject, created = Dealership.objects.update_or_create(
+                    name=dealershipName,
+                    defaults={'group': DealershipGroup.objects.get(id=1)},
+                )
+
+
+                userProfileList.append(UserProfile(user=userObject, dealership=dealershipObject, isActive=True,
+                                                   firstName=row['firstName'], lastName=row['lastName'],
+                                                   email=row['email'])
+                                       )
+
+            UserProfile.objects.bulk_create(userProfileList)
 
             """try:
                 newUserProfile = UserProfile.objects.create(user, dealership, isActive=True, firstName=user.username,
@@ -52,7 +84,6 @@ class UserProfileAdmin(admin.ModelAdmin):
             except:
                 print("hata")"""
             return HttpResponseRedirect("../../")
-
 
     def my_view(self, request):
         # ...

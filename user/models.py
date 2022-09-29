@@ -12,8 +12,8 @@ from dealership.models import Dealership
 # Create your models here.
 
 class UserProfile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, primary_key=False)
-    dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE, primary_key=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE)
     isActive = models.BooleanField(verbose_name="Is Active")
     firstName = models.CharField(max_length=50, verbose_name="First Name", null=False, blank=False)
     lastName = models.CharField(max_length=50, verbose_name="Last Name", null=False, blank=False)
