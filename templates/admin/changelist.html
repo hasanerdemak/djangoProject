@@ -1,0 +1,12 @@
+{% extends 'admin/change_list.html' %}
+{% block object-tools %}
+    <div>
+        <form action="import/" method="POST">
+            {% csrf_token %}
+                <input type="text" name="text-value" required>
+                <button type="submit"> button</button>
+        </form>
+    </div>
+    <br />
+    {{ block.super }}
+{% endblock %}
