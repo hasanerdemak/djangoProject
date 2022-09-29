@@ -13,7 +13,7 @@ from .models import UserProfile
 class UserProfileAdmin(admin.ModelAdmin):
     #list_display = ["user", "dealership"]
     # fields = ("user", "dealership")
-    add_form_template = "test.html"
+    #add_form_template = "test.html"
 
     class Meta:
         model = UserProfile

@@ -12,8 +12,8 @@ from dealership.models import Dealership
 # Create your models here.
 
 class UserProfile(models.Model):
-    user = models.ManyToManyField(User, related_name="userprofile_user_id")
-    dealership = models.ManyToManyField(Dealership, related_name="userprofile_dealership_id")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, primary_key=False)
+    dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE, primary_key=False)
     isActive = models.BooleanField(verbose_name="Is Active")
     firstName = models.CharField(max_length=50, verbose_name="First Name", null=False, blank=False)
     lastName = models.CharField(max_length=50, verbose_name="Last Name", null=False, blank=False)
