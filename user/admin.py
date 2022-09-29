@@ -1,38 +1,49 @@
 from http.client import HTTPResponse
 
 from django.contrib import admin
+from django.urls import path
 
 from dealership.models import Dealership
 from .models import UserProfile
+from django import forms
+from django.http import HttpResponseRedirect
+
+
+class UserProfileForm(forms.ModelForm):
+    extra_field = forms.CharField()
+
+    def save(self, commit=True):
+        extra_field = self.cleaned_data.get('extra_field', None)
+
+        # Do something with extra_field here
+
+        return super().save(commit=commit)
 
 
 # Register your models here.
+@admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ["user", "dealership"]
-    #fields = ("user", "dealership")
-    add_form_template = "test.html"
-
+    # fields = ("user", "dealership")
+    form = UserProfileForm
+    change_list_template = "admin/changelist.html"
     class Meta:
         model = UserProfile
 
-    def addUserProfile(request):
-        if request.method == "GET":
-            return HTTPResponse("")
-        else:  # POST
-            users = request.POST.get("users")
-            print(users.username)
-
-            dealerships = request.POST.get("dealerships")
-            try:
-                newUserProfile = UserProfile.objects.create(users, dealerships, isActive=True, firstName=users.username,
-                                                            lastName="", email="@")
-            except:
-                print("hata")
-
-            newUserProfile.save()
-
-            return HTTPResponse("")
-
+    '''def get_form(self, request, obj=None, change=False, **kwargs):
+        form = super(UserProfileAdmin, self).get_form(request,obj,**kwargs)
+        return form'''
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path('import/',self.set_data_onclick)
+        ]
+        return my_urls + urls
+    def set_data_onclick(self,request):
+        print(self.model.objects.all())
+        value = request.POST.get('text-value')
+        print(value)
+        return HttpResponseRedirect("../")
     """def get_urls(self):
         urls = super().get_urls()
         my_urls = [
@@ -48,7 +59,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             # Anything else you want in the context...
 
         )
-        return TemplateResponse(request, "user.html", context)
+        return TemplateResponse(request, "user.admin", context)
 
     def addUserProfile(request):
         if request.method == "GET":
@@ -80,8 +91,6 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         super().save_model(request, obj, form, change)"""
 
-
-admin.site.register(UserProfile, UserProfileAdmin)
 
 """class UserProfileAdminForm(ModelForm):
     users = ModelMultipleChoiceField(queryset=User.objects.all(),
