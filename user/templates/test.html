@@ -24,10 +24,39 @@
 
       <!-- Submit button -->
         <div class="form-check d-flex justify-content-center mb-4">
-        <button type="submit" class="btn btn-primary btn-block mb-4">
+
+        <button type="submit" class="btn btn-primary btn-block mb-4" >
             Create UserProfile
         </button>
         </div>
     </form>
+    <button class="btn btn-primary btn-block mb-4" onclick="myFunction()">
 
+            TypeCheck
+        </button>
+    <div id="team"></div>
+
+    <script>
+        function myFunction() {
+          var tbl = "<table class='table table-sm table-responsive table-bordered table-striped'><tbody>"
+          var lines = document.getElementById("formTextArea").value.split("\n");
+          for (var i = 0; i < lines.length; i++) {
+              if (i!=0)
+                tbl = tbl + "<tr>" +"<th scope="+'"row">'+i +"</th>"
+              else
+                  tbl = tbl + "<tr>" +"<th scope="+'"row">'+"#" +"</th>"
+            var items = lines[i].split(",");
+            for (var j = 0; j < items.length; j++) {
+              tbl = tbl + "<td>" + items[j] + "</td>";
+            }
+            tbl = tbl + "</tr>";
+          }
+          tbl = tbl + "</tbody></table>";
+          var divTable = document.getElementById('team');
+          console.log(tbl);
+          divTable.innerHTML = tbl;
+
+
+        }
+        </script>
 {% endblock %}

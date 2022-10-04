@@ -83,7 +83,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                             lastName="", email="@")
             except:
                 print("hata")"""
-            return HttpResponseRedirect("../../")
+            return HttpResponseRedirect("..")
 
     def my_view(self, request):
         # ...
