@@ -9,6 +9,7 @@ from django.template.response import TemplateResponse
 from django.urls import path
 
 from dealership.models import Dealership, DealershipGroup
+from . import views
 from .models import UserProfile
 
 import random
@@ -17,7 +18,7 @@ import string
 
 # Register your models here.
 class UserProfileAdmin(admin.ModelAdmin):
-    # list_display = ["user", "dealership"]
+    list_display = ["user", "dealership"]
     # fields = ("user", "dealership")
     add_form_template = "test.html"
 
@@ -37,7 +38,12 @@ class UserProfileAdmin(admin.ModelAdmin):
             return HttpResponseRedirect("../../")
         else:  # POST
 
+
+            createIfNotExist = True if (request.POST.get("formCheckBox") is not None) else False
+
             text = request.POST.get("formTextArea")
+            if len(text) == 0:
+                return HttpResponseRedirect("../../")
             data = io.StringIO(text)
             userProfileTable = pd.read_csv(data, sep=",")
             print(userProfileTable)
@@ -54,11 +60,10 @@ class UserProfileAdmin(admin.ModelAdmin):
                     username = row['firstName'] + row['lastName']
 
                 userObject, created = User.objects.update_or_create(
-                    username= username,
+                    username=username,
                     defaults={'email': row["email"],
                               'password': ''.join(random.choice(characters) for i in range(8))},
                 )
-
 
                 if Dealership.objects.filter(id=row['dealership']).exists():
                     dealershipName = Dealership.objects.get(id=row['dealership']).name
@@ -69,7 +74,6 @@ class UserProfileAdmin(admin.ModelAdmin):
                     name=dealershipName,
                     defaults={'group': DealershipGroup.objects.get(id=1)},
                 )
-
 
                 userProfileList.append(UserProfile(user=userObject, dealership=dealershipObject, isActive=True,
                                                    firstName=row['firstName'], lastName=row['lastName'],

@@ -10,7 +10,7 @@
     {% csrf_token %}
       <!-- Message input -->
       <div class="form-outline mb-4">
-        <textarea class="form-control" name="formTextArea" id="formTextArea" rows="4"></textarea>
+        <textarea spellcheck="true" class="form-control" name="formTextArea" id="formTextArea" rows="4"></textarea>
         <label class="form-label" for="formTextArea"></label>
       </div>
 
@@ -55,7 +55,6 @@
           var divTable = document.getElementById('team');
           console.log(tbl);
           divTable.innerHTML = tbl;
-
 
         }
         </script>
