@@ -3,16 +3,93 @@
 
 {% block css_files %}
     <style>
-    .editor {
-      display: inline-flex;
-      gap: 10px;
-      font-family: monospace;
-      line-height: 21px;
-      background: #282a3a;
-      border-radius: 2px;
-      padding: 20px 10px;
-        max-height: 500px;
-        overflow-y: scroll;
+
+        @import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono');
+     * {
+    	 margin: 0;
+    	 padding: 0;
+    	 box-sizing: border-box;
+    }
+     ::-moz-selection {
+    	 background: #ff733c;
+    	 color: #FFFFFF;
+    }
+     ::selection {
+    	 background: #ff733c;
+    	 color: #FFFFFF;
+    }
+     body {
+    	 overflow-x: hidden;
+    	 background: #E4E6C3;
+    }
+     .custom-textarea {
+    	 position: relative;
+    	 width: 800px;
+    	 max-width: 90%;
+    	 margin: 20px auto;
+    	 border-radius: 5px;
+    	 box-shadow: 0 0 16px rgba(34,39,37,0.3);
+    	 overflow: hidden;
+    }
+     .custom-textarea::after {
+    	 content: '';
+    	 display: block;
+    	 position: absolute;
+    	 top: 0;
+    	 left: 42px;
+    	 width: 16px;
+    	 height: 100%;
+    	 background: #FFFFFF;
+    	 pointer-events: none;
+    	 z-index: 1;
+    }
+     .custom-textarea > .textarea {
+    	 display: block;
+    	 position: relative;
+    	 z-index: 1;
+    	 width: calc(92%);
+    	 height: 150px;
+    	 min-height: 150px;
+    	 max-height: 90vh;
+    	 margin-left: 58px;
+    	 font-size: 16px;
+    	 line-height: 24px;
+    	 font-family: 'Ubuntu Mono', monospace;
+    	 outline: none;
+    	 border: none;
+    	 border-radius: 0 5px 5px 0;
+    	 resize: vertical;
+    	 white-space: pre;
+    	 overflow: auto;
+    	 word-wrap: normal;
+    	 color: #121113;
+    	 background: #FFFFFF;
+    }
+     .custom-textarea > .textarea::-webkit-scrollbar-track {
+    	 border-radius: 0;
+    	 background-color: #ffffff;
+    }
+     .custom-textarea > .textarea::-webkit-scrollbar {
+    	 width: 12px;
+    	 background-color: #FFFFFF;
+    }
+     .custom-textarea > .textarea::-webkit-scrollbar-thumb {
+    	 border-radius: 0;
+    	 background-color: #ff733c;
+    }
+     .custom-textarea > .linenumbers {
+    	 position: absolute;
+    	 top: 0;
+    	 left: 0;
+    	 width: 42px;
+    	 background: #ff733c;
+    }
+     .custom-textarea > .linenumbers > .number {
+    	 font-family: 'Ubuntu Mono', monospace;
+    	 font-size: 16px;
+    	 line-height: 24px;
+    	 padding-left: 6px;
+    	 color: #222725;
     }
 
     form {
@@ -20,41 +97,7 @@
         max-lines: 20;
     }
 
-    textarea {
-      line-height: 21px;
-      overflow-y: scroll;
-      padding: 0;
-      border: 0;
-      background: #282a3a;
-      color: #FFF;
-      min-width: 500px;
-      outline: none;
-      resize: none;
-        max-height: 500px;
-    }
 
-    .line-numbers {
-      width: 20px;
-      text-align: right;
-        max-height: 500px;
-        max-lines: 20;
-        overflow-y: scroll;
-        resize: none;
-    }
-
-    .line-numbers span {
-      counter-increment: linenumber;
-        max-lines: 20;
-        overflow-y: scroll;
-    }
-
-    .line-numbers span::before {
-      content: counter(linenumber);
-      display: block;
-      color: #506882;
-        max-lines: 20;
-        overflow-y: scroll;
-    }
     </style>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 {% endblock %}
@@ -62,62 +105,87 @@
     <form action="addUserProfile/" method="POST">
     {% csrf_token %}
       <!-- Message input -->
-      <div class="editor">
-          <div class="line-numbers">
-                <span></span>
-          </div>
-        <textarea spellcheck="false" name="formTextArea" id="formTextArea" required >{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
-        <label class="form-label" for="formTextArea"></label>
-      </div>
+    <div class="row d-flex justify-content-center" >
+      <div class="custom-textarea">
 
-      <!-- Checkbox -->
-      <div class="form-check d-flex justify-content-center mb-4">
-        <input class="form-check-input me-2" type="checkbox" value="" name="formCheckBox" id="formCheckBox" checked />
-        <label class="form-check-label" for="formCheckBox">
-          Create models if not exist
-        </label>
+        <textarea class= "textarea" spellcheck="false" id="formTextArea" name="formTextArea" required >{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
+          <div class="linenumbers"></div>
+
       </div>
+    </div>
+      <!-- Checkbox -->
+        <div class="row">
+          <div class="form-check col-12 d-flex justify-content-center mb-4">
+            <input class="form-check-input me-2" type="checkbox" value="" name="formCheckBox" id="formCheckBox" checked />
+            <label class="form-check-label" for="formCheckBox">
+              Create models if not exist
+            </label>
+          </div>
+        </div>
 
       <!-- Submit button -->
-        <div class="form-check justify-content-center m-4 btn-group-vertical">
-
-        <button type="submit" class="btn btn-primary" formaction="" name="typeCheckButton" value="check">
-            TypeCheck
-        </button>
-
-        <button type="submit" class="btn btn-primary" name="createButton" value="create" {% if isValid %} {% else %} disabled {% endif %}>
-            Create UserProfile
-        </button>
-
+        <div class="row d-flex justify-content-center form-check ">
+        <div class="col-6 d-flex justify-content-center">
+            <button type="submit" class="btn btn-primary" formaction="" name="typeCheckButton" value="check">
+                TypeCheck
+            </button>
+        </div>
+        <div class="col-6 d-flex justify-content-center">
+            <button type="submit" class="btn btn-primary" name="createButton" value="create" {% if isValid %} {% else %} disabled {% endif %}>
+                Create UserProfile
+            </button>
+        </div>
 
         </div>
     </form>
 
-    <div id="team"></div>
+    <div class="row">
+        <div id="team">
 
+        </div>
+    </div>
     <script>
-        const textarea = document.querySelector('textarea')
-        const lineNumbers = document.querySelector('.line-numbers')
 
-        textarea.addEventListener('keyup', event => {
-          const numberOfLines = event.target.value.split('\n').length
+    class CustomTextarea {
+    constructor(element) {
+        this.element = element;
+        this.textarea = this.element.querySelector('.textarea');
+        this.numbers = this.element.querySelector('.linenumbers');
 
-          lineNumbers.innerHTML = Array(numberOfLines)
-            .fill('<span></span>')
-            .join('')
-        })
+        this.numberOfNumbers = 0;
 
-        textarea.addEventListener('keydown', event => {
-          if (event.key === 'Tab') {
-            const start = textarea.selectionStart
-            const end = textarea.selectionEnd
+        this.addMoreNumbers();
+        this.initEventListeners();
+    }
 
-            textarea.value = textarea.value.substring(0, start) + '\t' + textarea.value.substring(end)
+    addMoreNumbers() {
+        let html = '';
 
-            event.preventDefault()
-          }
-        })
+        for (let i = this.numberOfNumbers; i < this.numberOfNumbers + 100; i++) {
+            html += `<div class='number'>${ i }</div>`;
+        }
+
+        this.numberOfNumbers += 100;
+        this.numbers.innerHTML += html;
+    }
+
+    initEventListeners() {
+        this.textarea.addEventListener('scroll', () => {
+            this.numbers.style.transform = `translateY(-${ this.textarea.scrollTop }px)`;
+
+            if (Math.abs(
+                this.numbers.offsetHeight
+                    - this.textarea.offsetHeight
+                    - this.textarea.scrollTop) < 100) {
+                this.addMoreNumbers();
+            }
+        });
+    }
+};
+
+const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
     </script>
+
 
     <script>
         window.onload = function (){

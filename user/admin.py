@@ -94,8 +94,8 @@ class UserProfileAdmin(admin.ModelAdmin):
             characters = string.ascii_letters + string.digits + string.punctuation
             userProfileList = list()
 
-            for i in range(len(userProfileTable)):#enumerate
-                row = userProfileTable.iloc[i]
+            for index, row in userProfileTable.iterrows():#enumerate
+                row = userProfileTable.iloc[index]
 
                 if User.objects.filter(id=row['user']).exists():
                     username = User.objects.get(id=row['user']).username
