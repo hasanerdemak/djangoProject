@@ -1,4 +1,5 @@
 import io
+import json
 from http.client import HTTPResponse
 import pandas as pd
 import numpy as np
@@ -30,10 +31,51 @@ class UserProfileAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            path('add/', self.my_view),
+            path('add/', self.checkInput),
             path('add/addUserProfile/', self.addUserProfile),
         ]
         return my_urls + urls
+
+
+    def checkInput(self, request, obj=None, **kwargs):
+        context = {"text": None,
+                   "errors": None,
+                   "missingSpacesRows": None,
+                   "missingSpacesCols": None,
+                   "showTable": 'false',
+                   "isValid": False}
+
+        text = request.POST.get("formTextArea")
+
+        if text is None or len(text) == 0:
+            return TemplateResponse(request, "test.html", context)
+
+        data = io.StringIO(text)
+        userProfileTable = pd.read_csv(data, sep=",")
+
+        # errors = [[1, 2], [4, 3]]
+        # print(userProfileTable.iloc[:, 1:2])
+        missingSpacesRows = np.where(pd.isnull(userProfileTable))[0]
+        missingSpacesCols = np.where(pd.isnull(userProfileTable))[1]
+
+        """missingSpacesRows = json.dumps(missingSpacesRows)
+        missingSpacesCols = json.dumps(missingSpacesCols)"""
+
+        missingSpacesRows = missingSpacesRows.tolist()
+        missingSpacesCols = missingSpacesCols.tolist()
+
+        showTable = 'true'
+
+        context = {"text": text,
+                   # "errors": errors,
+                   "missingSpacesRows": missingSpacesRows,
+                   "missingSpacesCols": missingSpacesCols,
+                   "showTable": showTable,
+                   "isValid": True}
+
+        return render(request, "test.html", context)
+
+        #return TemplateResponse(request, "test.html", context)
 
     def addUserProfile(self, request, obj=None, **kwargs):
         if request.method == "GET":
@@ -41,35 +83,18 @@ class UserProfileAdmin(admin.ModelAdmin):
         else:  # POST
 
             text = request.POST.get("formTextArea")
-
-            if len(text) == 0:
-                return HttpResponseRedirect("../../")
             data = io.StringIO(text)
             userProfileTable = pd.read_csv(data, sep=",")
 
-
             createIfNotExist = True if (request.POST.get("formCheckBox") is not None) else False
-            typeCheckButton = True if (request.POST.get("typeCheckButton") is not None) else False
-            if typeCheckButton:
-                errors = [[1, 2], [4, 3]]
-                print(userProfileTable.iloc[:, 1:2])
-                missingSpacesRows = np.where(pd.isnull(userProfileTable))[0]
-                missingSpacesCols = np.where(pd.isnull(userProfileTable))[1]
-
-                showTable = 'true'
-
-                context = {"text": text,
-                           "errors": errors,
-                           "missingSpacesRows": missingSpacesRows,
-                           "missingSpacesCols": missingSpacesCols,
-                           "showTable": showTable}
-                #return render(request, "test.html", context)
-                return render(request, "test.html", context)
+            #typeCheckButton = True if (request.POST.get("typeCheckButton") is not None) else False
+            #if typeCheckButton:
+                # ...
 
             characters = string.ascii_letters + string.digits + string.punctuation
             userProfileList = list()
 
-            for i in range(len(userProfileTable)):
+            for i in range(len(userProfileTable)):#enumerate
                 row = userProfileTable.iloc[i]
 
                 if User.objects.filter(id=row['user']).exists():
@@ -112,7 +137,8 @@ class UserProfileAdmin(admin.ModelAdmin):
                     "errors": None,
                    "missingSpacesRows": None,
                    "missingSpacesCols": None,
-                    "showTable": 'false'}
+                    "showTable": 'false',
+                   "isValid": True}
         return TemplateResponse(request, "test.html", context)
 
 

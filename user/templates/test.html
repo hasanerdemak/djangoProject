@@ -65,7 +65,7 @@
       <div class="editor">
           <div class="line-numbers">
                 <span></span>
-            </div>
+          </div>
         <textarea spellcheck="false" name="formTextArea" id="formTextArea" required >{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
         <label class="form-label" for="formTextArea"></label>
       </div>
@@ -79,16 +79,17 @@
       </div>
 
       <!-- Submit button -->
-        <div class="form-check d-flex justify-content-center mb-4">
+        <div class="form-check justify-content-center m-4 btn-group-vertical">
 
-        <button type="submit" class="btn btn-primary btn-block mb-4" name="createButton" value="create">
+        <button type="submit" class="btn btn-primary" formaction="" name="typeCheckButton" value="check">
+            TypeCheck
+        </button>
+
+        <button type="submit" class="btn btn-primary" name="createButton" value="create" {% if isValid %} {% else %} disabled {% endif %}>
             Create UserProfile
         </button>
 
-        <button type="submit" class="btn btn-primary btn-block mb-4" formaction="" name="typeCheckButton" value="check">
 
-            TypeCheck
-        </button>
         </div>
     </form>
 
