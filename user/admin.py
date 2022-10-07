@@ -4,6 +4,8 @@ from http.client import HTTPResponse
 import pandas as pd
 import numpy as np
 
+import re
+
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.http import HttpResponseRedirect, JsonResponse
@@ -22,6 +24,7 @@ import string
 # Register your models here.
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ["user", "dealership"]
+
     # fields = ("user", "dealership")
     # add_form_template = "test.html"
 
@@ -36,12 +39,12 @@ class UserProfileAdmin(admin.ModelAdmin):
         ]
         return my_urls + urls
 
-
     def checkInput(self, request, obj=None, **kwargs):
         context = {"text": None,
-                   "errors": None,
                    "missingSpacesRows": None,
                    "missingSpacesCols": None,
+                   "nonValidSpacesRows": None,
+                   "nonValidSpacesCols": None,
                    "showTable": 'false',
                    "isValid": False}
 
@@ -53,29 +56,60 @@ class UserProfileAdmin(admin.ModelAdmin):
         data = io.StringIO(text)
         userProfileTable = pd.read_csv(data, sep=",")
 
-        # errors = [[1, 2], [4, 3]]
-        # print(userProfileTable.iloc[:, 1:2])
         missingSpacesRows = np.where(pd.isnull(userProfileTable))[0]
         missingSpacesCols = np.where(pd.isnull(userProfileTable))[1]
-
-        """missingSpacesRows = json.dumps(missingSpacesRows)
-        missingSpacesCols = json.dumps(missingSpacesCols)"""
 
         missingSpacesRows = missingSpacesRows.tolist()
         missingSpacesCols = missingSpacesCols.tolist()
 
+        int_cols = [0, 1, 2]
+        bool_cols = [3]
+        name_cols = [4, 5]
+        email_cols = [6]
+
+        nonValidSpacesRows = []
+        nonValidSpacesCols = []
+
+        Util = Utils()
+        for i in range(len(userProfileTable.columns)):
+            index_list = []
+            if i in int_cols:
+                index_list = Util.indexes_of_non_int_values(userProfileTable.iloc[:, i].tolist())
+            if i in bool_cols:
+                index_list = Util.indexes_of_non_boolean_values(userProfileTable.iloc[:, i].tolist())
+            if i in name_cols:
+                index_list = Util.indexes_of_non_valid_names(userProfileTable.iloc[:, i].tolist())
+            if i in email_cols:
+                index_list = Util.indexes_of_non_valid_emails(userProfileTable.iloc[:, i].tolist())
+
+            for j in index_list:
+                nonValidSpacesRows.append(j)
+                nonValidSpacesCols.append(i)
+
+        print(nonValidSpacesRows)
+        print(nonValidSpacesCols)
+
+        """A= [1, 2, 3, 4, 5, 7]
+            B= [3, 4, 1, 6, 7, 5]
+            a_indices = [x in B for x in A]
+
+            print(a_indices)"""
+
         showTable = 'true'
 
+        isValid = True if (len(nonValidSpacesRows) == 0 and len(missingSpacesRows) == 0) else False
+
         context = {"text": text,
-                   # "errors": errors,
                    "missingSpacesRows": missingSpacesRows,
                    "missingSpacesCols": missingSpacesCols,
+                   "nonValidSpacesRows": nonValidSpacesRows,
+                   "nonValidSpacesCols": nonValidSpacesCols,
                    "showTable": showTable,
-                   "isValid": True}
+                   "isValid": isValid}
 
         return render(request, "test.html", context)
 
-        #return TemplateResponse(request, "test.html", context)
+        # return TemplateResponse(request, "test.html", context)
 
     def addUserProfile(self, request, obj=None, **kwargs):
         if request.method == "GET":
@@ -87,14 +121,11 @@ class UserProfileAdmin(admin.ModelAdmin):
             userProfileTable = pd.read_csv(data, sep=",")
 
             createIfNotExist = True if (request.POST.get("formCheckBox") is not None) else False
-            #typeCheckButton = True if (request.POST.get("typeCheckButton") is not None) else False
-            #if typeCheckButton:
-                # ...
 
             characters = string.ascii_letters + string.digits + string.punctuation
             userProfileList = list()
 
-            for index, row in userProfileTable.iterrows():#enumerate
+            for index, row in userProfileTable.iterrows():  # enumerate
                 row = userProfileTable.iloc[index]
 
                 if User.objects.filter(id=row['user']).exists():
@@ -134,12 +165,60 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     def my_view(self, request):
         context = {"text": None,
-                    "errors": None,
                    "missingSpacesRows": None,
                    "missingSpacesCols": None,
-                    "showTable": 'false',
+                   "nonValidSpacesRows": None,
+                   "nonValidSpacesCols": None,
+                   "showTable": 'false',
                    "isValid": True}
         return TemplateResponse(request, "test.html", context)
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
+
+
+class Utils:
+    regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+
+    def isNaN(self, num):
+        return num != num
+
+    def indexes_of_non_int_values(self, value_list):
+        output = []
+        for index, value in enumerate(value_list):
+            try:
+                int(value)
+            except ValueError:
+                if not self.isNaN(value):
+                    output.append(index)
+
+        return output
+
+    def indexes_of_non_valid_emails(self, value_list):
+        if len(value_list) == 0:
+            return []
+        output = []
+        for index, email in enumerate(value_list):
+            try:
+                if not re.fullmatch(self.regex, email):
+                    output.append(index)
+            except TypeError:
+                pass
+
+        return output
+
+    def indexes_of_non_boolean_values(self, value_list):
+        output = []
+        for index, value in enumerate(value_list):
+            if not isinstance(value, bool) and not self.isNaN(value):
+                output.append(index)
+
+        return output
+
+    def indexes_of_non_valid_names(self, value_list):
+        output = []
+        for index, value in enumerate(value_list):
+            if not str(value).replace(" ", "").isalpha():
+                output.append(index)
+
+        return output

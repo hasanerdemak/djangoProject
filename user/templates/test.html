@@ -147,43 +147,43 @@
     <script>
 
     class CustomTextarea {
-    constructor(element) {
-        this.element = element;
-        this.textarea = this.element.querySelector('.textarea');
-        this.numbers = this.element.querySelector('.linenumbers');
+        constructor(element) {
+            this.element = element;
+            this.textarea = this.element.querySelector('.textarea');
+            this.numbers = this.element.querySelector('.linenumbers');
 
-        this.numberOfNumbers = 0;
+            this.numberOfNumbers = 0;
 
-        this.addMoreNumbers();
-        this.initEventListeners();
-    }
-
-    addMoreNumbers() {
-        let html = '';
-
-        for (let i = this.numberOfNumbers; i < this.numberOfNumbers + 100; i++) {
-            html += `<div class='number'>${ i }</div>`;
+            this.addMoreNumbers();
+            this.initEventListeners();
         }
 
-        this.numberOfNumbers += 100;
-        this.numbers.innerHTML += html;
-    }
+        addMoreNumbers() {
+            let html = '';
 
-    initEventListeners() {
-        this.textarea.addEventListener('scroll', () => {
-            this.numbers.style.transform = `translateY(-${ this.textarea.scrollTop }px)`;
-
-            if (Math.abs(
-                this.numbers.offsetHeight
-                    - this.textarea.offsetHeight
-                    - this.textarea.scrollTop) < 100) {
-                this.addMoreNumbers();
+            for (let i = this.numberOfNumbers; i < this.numberOfNumbers + 100; i++) {
+                html += `<div class='number'>${ i }</div>`;
             }
-        });
-    }
-};
 
-const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
+            this.numberOfNumbers += 100;
+            this.numbers.innerHTML += html;
+        }
+
+        initEventListeners() {
+            this.textarea.addEventListener('scroll', () => {
+                this.numbers.style.transform = `translateY(-${ this.textarea.scrollTop }px)`;
+
+                if (Math.abs(
+                    this.numbers.offsetHeight
+                        - this.textarea.offsetHeight
+                        - this.textarea.scrollTop) < 100) {
+                    this.addMoreNumbers();
+                }
+            });
+        }
+    }
+
+    const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
     </script>
 
 
@@ -200,7 +200,7 @@ const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
             }
         }
 
-        //const textarea = document.querySelector('textarea');
+        /*const textarea = document.querySelector('textarea');
 
         textarea.addEventListener('keyup', event => {
             //myFunction();
@@ -208,7 +208,7 @@ const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
             if (inputText == null || inputText === '') {
                     alert('empty or contains a new line');
             }
-        })
+        })*/
 
         function paintMissingSpaces(){
             var table = document.getElementById('userProfileTable');
@@ -224,29 +224,47 @@ const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
                 table.rows[missingSpacesRows[i]+1].cells[missingSpacesCols[i]+1].style.backgroundColor = '#ff5454';
             }
 
+            var nonValidSpacesRows = {{ nonValidSpacesRows }};
+            var nonValidSpacesCols = {{ nonValidSpacesCols }};
+            if (nonValidSpacesRows === 'None' || nonValidSpacesCols === 'None'){
+                return;
+            }
+
+            for (let i = 0; i < nonValidSpacesCols.length; i++) {
+                table.rows[nonValidSpacesRows[i]+1].cells[nonValidSpacesCols[i]+1].style.backgroundColor = '#ffcc00';
+            }
+
         }
 
         function myFunction() {
-            //var errors = {{  errors }};
 
-          var tbl = "<table class='table table-sm table-responsive table-bordered table-striped' id='userProfileTable'><tbody>"
+          var tbl = "<table class='table table-sm table-responsive table-bordered table-striped table-editable' id='userProfileTable'>";
           var lines = document.getElementById("formTextArea").value.split("\n");
-          for (var i = 0; i < lines.length; i++) {
-              if (i!=0)
-                tbl = tbl + "<tr>" +"<th scope="+'"row">'+i +"</th>"
-              else
-                  tbl = tbl + "<tr>" +"<th scope="+'"row">'+"#" +"</th>"
-            var items = lines[i].split(",");
-            for (var j = 0; j < items.length; j++) {
-              tbl = tbl + "<td>" + items[j] + "</td>";
-            }
-            tbl = tbl + "</tr>";
+
+          tbl = tbl + "<thead><tr>";
+          tbl = tbl + "<td>" + "#" + "</td>";
+          var headers = lines[0].split(",");
+          for (var j = 0; j < headers.length; j++) {
+              tbl = tbl + "<td>" + headers[j] + "</td>";
+          }
+          tbl = tbl + "</tr></thead>";
+
+          tbl = tbl + "<tbody>"
+          for (var i = 1; i < lines.length; i++) {
+              tbl = tbl + "<tr>" +"<th scope="+'"row">'+i +"</th>"
+
+              var items = lines[i].split(",");
+              for (var j = 0; j < headers.length; j++) {
+                  if (items.length > j) {
+                      tbl = tbl + "<td>" + items[j] + "</td>";
+                  } else {
+                      tbl = tbl + "<td></td>";
+                  }
+              }
+              tbl = tbl + "</tr>";
           }
           tbl = tbl + "</tbody></table>";
           var divTable = document.getElementById('team');
-          //console.log(tbl);
-            //var x = tbl.rows[0]?.cells;
-            //x[0].innerHTML = "NEW CONTENT";
           divTable.innerHTML = tbl;
 
         }
