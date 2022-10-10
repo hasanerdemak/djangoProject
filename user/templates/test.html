@@ -97,96 +97,135 @@
         max-lines: 20;
     }
 
-
     </style>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 {% endblock %}
 
+    <!-- CSV UPLOAD -->
+    <input type="file" id="fileUpload" />
+    <input type="button" class="btn btn-primary" id="upload" value="Upload" onclick="Upload()" />
+    <hr />
+
     <form action="addUserProfile/" method="POST">
-    {% csrf_token %}
-      <!-- Message input -->
-    <div class="row d-flex justify-content-center" >
-      <div class="custom-textarea">
+        {% csrf_token %}
 
-        <textarea class= "textarea" spellcheck="false" id="formTextArea" name="formTextArea" required >{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
-          <div class="linenumbers"></div>
+        <!-- Message input -->
+        <div class="row d-flex justify-content-center" >
+            <div class="custom-textarea">
+                <textarea class= "textarea" spellcheck="false" id="formTextArea" name="formTextArea" required >{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
+                <div class="linenumbers"></div>
+            </div>
+        </div>
 
-      </div>
-    </div>
-      <!-- Checkbox -->
+        <!-- Checkbox -->
         <div class="row">
-          <div class="form-check col-12 d-flex justify-content-center mb-4">
-            <input class="form-check-input me-2" type="checkbox" value="" name="formCheckBox" id="formCheckBox" checked />
-            <label class="form-check-label" for="formCheckBox">
-              Create models if not exist
-            </label>
-          </div>
+            <div class="form-check col-12 d-flex justify-content-center mb-4">
+                <input class="form-check-input me-2" type="checkbox" value="" name="formCheckBox" id="formCheckBox" checked />
+                <label class="form-check-label" for="formCheckBox">
+                    Create models if not exist
+                </label>
+            </div>
         </div>
 
-      <!-- Submit button -->
+        <!-- BUTTONS DIV-->
         <div class="row d-flex justify-content-center form-check ">
-        <div class="col-6 d-flex justify-content-center">
-            <button type="submit" class="btn btn-primary" formaction="" name="typeCheckButton" value="check">
-                TypeCheck
-            </button>
-        </div>
-        <div class="col-6 d-flex justify-content-center">
-            <button type="submit" class="btn btn-primary" name="createButton" value="create" {% if isValid %} {% else %} disabled {% endif %}>
-                Create UserProfile
-            </button>
-        </div>
+            <div class="col-6 d-flex justify-content-center">
+                <button type="submit" class="btn btn-primary" formaction="" name="typeCheckButton" value="check">
+                    TypeCheck
+                </button>
+            </div>
 
+            <div class="col-6 d-flex justify-content-center">
+                <button type="submit" class="btn btn-primary" name="createButton" value="create" {% if isValid %} {% else %} disabled {% endif %}>
+                    Create UserProfile
+                </button>
+            </div>
         </div>
     </form>
 
-    <div class="row">
-        <div id="team">
+    <!-- TABLE DIV -->
+    <div id="divTable">
 
-        </div>
     </div>
-    <script>
 
-    class CustomTextarea {
-        constructor(element) {
-            this.element = element;
-            this.textarea = this.element.querySelector('.textarea');
-            this.numbers = this.element.querySelector('.linenumbers');
-
-            this.numberOfNumbers = 0;
-
-            this.addMoreNumbers();
-            this.initEventListeners();
-        }
-
-        addMoreNumbers() {
-            let html = '';
-
-            for (let i = this.numberOfNumbers; i < this.numberOfNumbers + 100; i++) {
-                html += `<div class='number'>${ i }</div>`;
-            }
-
-            this.numberOfNumbers += 100;
-            this.numbers.innerHTML += html;
-        }
-
-        initEventListeners() {
-            this.textarea.addEventListener('scroll', () => {
-                this.numbers.style.transform = `translateY(-${ this.textarea.scrollTop }px)`;
-
-                if (Math.abs(
-                    this.numbers.offsetHeight
-                        - this.textarea.offsetHeight
-                        - this.textarea.scrollTop) < 100) {
-                    this.addMoreNumbers();
+    <!-- CSV UPLOAD SCRIPT -->
+    <script type="text/javascript">
+        function Upload() {
+            var fileUpload = document.getElementById("fileUpload");
+            var regex = /^([a-zA-Z0-9\s_\\.\-:])+(.csv|.txt)$/;
+            if (regex.test(fileUpload.value.toLowerCase())) {
+                if (typeof (FileReader) != "undefined") {
+                    var reader = new FileReader();
+                    reader.onload = function (e) {
+                        var table = document.createElement("table");
+                        var rows = e.target.result.split("\n");
+                        for (var i = 0; i < rows.length; i++) {
+                            var cells = rows[i].split(",");
+                            if (cells.length > 1) {
+                                var row = table.insertRow(-1);
+                                for (var j = 0; j < cells.length; j++) {
+                                    var cell = row.insertCell(-1);
+                                    cell.innerHTML = cells[j];
+                                }
+                            }
+                        }
+                        var divTable = document.getElementById("divTable");
+                        divTable.innerHTML = "";
+                        divTable.appendChild(table);
+                    }
+                    reader.readAsText(fileUpload.files[0]);
+                } else {
+                    alert("This browser does not support HTML5.");
                 }
-            });
+            } else {
+                alert("Please upload a valid CSV file.");
+            }
         }
-    }
-
-    const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
     </script>
 
+    <!-- LINE NUMBER SCRIPT -->
+    <script>
+        class CustomTextarea {
+            constructor(element) {
+                this.element = element;
+                this.textarea = this.element.querySelector('.textarea');
+                this.numbers = this.element.querySelector('.linenumbers');
 
+                this.numberOfNumbers = 0;
+
+                this.addMoreNumbers();
+                this.initEventListeners();
+            }
+
+            addMoreNumbers() {
+                let html = '';
+
+                for (let i = this.numberOfNumbers; i < this.numberOfNumbers + 100; i++) {
+                    html += `<div class='number'>${ i }</div>`;
+                }
+
+                this.numberOfNumbers += 100;
+                this.numbers.innerHTML += html;
+            }
+
+            initEventListeners() {
+                this.textarea.addEventListener('scroll', () => {
+                    this.numbers.style.transform = `translateY(-${ this.textarea.scrollTop }px)`;
+
+                    if (Math.abs(
+                        this.numbers.offsetHeight
+                            - this.textarea.offsetHeight
+                            - this.textarea.scrollTop) < 100) {
+                        this.addMoreNumbers();
+                    }
+                });
+            }
+        }
+
+        const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
+    </script>
+
+    <!-- TABLE SCRIPT -->
     <script>
         window.onload = function (){
             try {
@@ -264,7 +303,7 @@
               tbl = tbl + "</tr>";
           }
           tbl = tbl + "</tbody></table>";
-          var divTable = document.getElementById('team');
+          var divTable = document.getElementById('divTable');
           divTable.innerHTML = tbl;
 
         }
