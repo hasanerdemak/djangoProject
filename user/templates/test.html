@@ -102,8 +102,7 @@
 {% endblock %}
 
     <!-- CSV UPLOAD -->
-    <input type="file" id="fileUpload" />
-    <input type="button" class="btn btn-primary" id="upload" value="Upload" onclick="Upload()" />
+    <input type="file" onchange=read(this) />
     <hr />
 
     <form action="addUserProfile/" method="POST">
@@ -112,7 +111,7 @@
         <!-- Message input -->
         <div class="row d-flex justify-content-center" >
             <div class="custom-textarea">
-                <textarea class= "textarea" spellcheck="false" id="formTextArea" name="formTextArea" required >{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
+                <textarea class="textarea" spellcheck="false" id="formTextArea" name="formTextArea" required >{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
                 <div class="linenumbers"></div>
             </div>
         </div>
@@ -150,36 +149,15 @@
 
     <!-- CSV UPLOAD SCRIPT -->
     <script type="text/javascript">
-        function Upload() {
-            var fileUpload = document.getElementById("fileUpload");
-            var regex = /^([a-zA-Z0-9\s_\\.\-:])+(.csv|.txt)$/;
-            if (regex.test(fileUpload.value.toLowerCase())) {
-                if (typeof (FileReader) != "undefined") {
-                    var reader = new FileReader();
-                    reader.onload = function (e) {
-                        var table = document.createElement("table");
-                        var rows = e.target.result.split("\n");
-                        for (var i = 0; i < rows.length; i++) {
-                            var cells = rows[i].split(",");
-                            if (cells.length > 1) {
-                                var row = table.insertRow(-1);
-                                for (var j = 0; j < cells.length; j++) {
-                                    var cell = row.insertCell(-1);
-                                    cell.innerHTML = cells[j];
-                                }
-                            }
-                        }
-                        var divTable = document.getElementById("divTable");
-                        divTable.innerHTML = "";
-                        divTable.appendChild(table);
-                    }
-                    reader.readAsText(fileUpload.files[0]);
-                } else {
-                    alert("This browser does not support HTML5.");
-                }
-            } else {
-                alert("Please upload a valid CSV file.");
-            }
+        const reader = new FileReader()
+
+        function read(input) {
+            const csv = input.files[0]
+            reader.readAsText(csv)
+        }
+
+        reader.onload = function (e) {
+            document.getElementById('formTextArea').value = e.target.result;
         }
     </script>
 
