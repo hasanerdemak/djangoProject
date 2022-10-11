@@ -46,7 +46,8 @@ class UserProfileAdmin(admin.ModelAdmin):
                    "nonValidSpacesRows": None,
                    "nonValidSpacesCols": None,
                    "showTable": 'false',
-                   "isValid": False}
+                   "isValid": False,
+                   "error": None}
 
         text = request.POST.get("formTextArea")
 
@@ -54,7 +55,18 @@ class UserProfileAdmin(admin.ModelAdmin):
             return TemplateResponse(request, "test.html", context)
 
         data = io.StringIO(text)
-        userProfileTable = pd.read_csv(data, sep=",")
+        try:
+            userProfileTable = pd.read_csv(data, sep=",")
+        except pd.errors.ParserError as e:
+            context = {"text": text,
+                       "missingSpacesRows": None,
+                       "missingSpacesCols": None,
+                       "nonValidSpacesRows": None,
+                       "nonValidSpacesCols": None,
+                       "showTable": 'false',
+                       "isValid": False,
+                       "error": str(e)}
+            return render(request, "test.html", context)
 
         missingSpacesRows = np.where(pd.isnull(userProfileTable))[0]
         missingSpacesCols = np.where(pd.isnull(userProfileTable))[1]
@@ -105,7 +117,8 @@ class UserProfileAdmin(admin.ModelAdmin):
                    "nonValidSpacesRows": nonValidSpacesRows,
                    "nonValidSpacesCols": nonValidSpacesCols,
                    "showTable": showTable,
-                   "isValid": isValid}
+                   "isValid": isValid,
+                   "error": None}
 
         return render(request, "test.html", context)
 
@@ -162,16 +175,6 @@ class UserProfileAdmin(admin.ModelAdmin):
             except:
                 print("hata")"""
             return HttpResponseRedirect("..")
-
-    def my_view(self, request):
-        context = {"text": None,
-                   "missingSpacesRows": None,
-                   "missingSpacesCols": None,
-                   "nonValidSpacesRows": None,
-                   "nonValidSpacesCols": None,
-                   "showTable": 'false',
-                   "isValid": True}
-        return TemplateResponse(request, "test.html", context)
 
 
 admin.site.register(UserProfile, UserProfileAdmin)

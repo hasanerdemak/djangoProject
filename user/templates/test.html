@@ -52,6 +52,7 @@
     	 min-height: 150px;
     	 max-height: 90vh;
     	 margin-left: 58px;
+         padding: 0px;
     	 font-size: 16px;
     	 line-height: 24px;
     	 font-family: 'Ubuntu Mono', monospace;
@@ -102,8 +103,12 @@
 {% endblock %}
 
     <!-- CSV UPLOAD -->
-    <input type="file" onchange=read(this) />
+    <input type="file" id="fileUpload" oninput="enableUploadButton()"/>
+    <button type="button" class="btn btn-primary" id="upload" value="Upload" onclick="read(document.getElementById('fileUpload'))" disabled>
+        Upload
+    </button>
     <hr />
+
 
     <form action="addUserProfile/" method="POST">
         {% csrf_token %}
@@ -143,7 +148,8 @@
     </form>
 
     <!-- TABLE DIV -->
-    <div id="divTable">
+    <div id="divTable" style="margin-top: 10px">
+        <p style="color: #ff0000; text-indent: 30px; text-transform: uppercase;">{% if error %}{{ error }}{% endif %}</p> <!--class="form-control"-->
 
     </div>
 
@@ -158,6 +164,10 @@
 
         reader.onload = function (e) {
             document.getElementById('formTextArea').value = e.target.result;
+        }
+
+        function enableUploadButton(){
+            document.getElementById('upload').disabled = false;
         }
     </script>
 
@@ -211,7 +221,6 @@
                     myFunction();
                     paintMissingSpaces();
                 }
-
             } catch (e){
                 console.error(e);
             }
@@ -235,7 +244,6 @@
             if (missingSpacesRows === 'None' || missingSpacesCols === 'None'){
                 return;
             }
-            console.log(missingSpacesRows)
 
             for (let i = 0; i < missingSpacesCols.length; i++) {
                 table.rows[missingSpacesRows[i]+1].cells[missingSpacesCols[i]+1].style.backgroundColor = '#ff5454';
