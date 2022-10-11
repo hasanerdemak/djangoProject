@@ -110,7 +110,6 @@ class UserProfileAdmin(admin.ModelAdmin):
         return render(request, "test.html", context)
 
         # return TemplateResponse(request, "test.html", context)
-
     def addUserProfile(self, request, obj=None, **kwargs):
         if request.method == "GET":
             return HttpResponseRedirect("../../")
@@ -125,6 +124,48 @@ class UserProfileAdmin(admin.ModelAdmin):
             characters = string.ascii_letters + string.digits + string.punctuation
             userProfileList = list()
 
+            Util = Utils()
+            exist_user_ids, nonexist_user_ids = Util.get_exist_and_nonexist_lists(list(userProfileTable['user']),
+                                                                                  User)
+            exist_dealership_ids, nonexist_dealership_ids = Util.get_exist_and_nonexist_lists(
+                list(userProfileTable['dealership']), User)
+            print(exist_user_ids, nonexist_user_ids)
+            print(exist_dealership_ids, nonexist_dealership_ids)
+            '''User object list for creation
+            user_list_create= list()
+            for user_index in enumerate(nonexist_user_ids):
+                user_list_create.append(User(id=userProfileTable["user"][user_index],
+                                             isActive=userProfileTable["isActive"][user_index],
+                                             email=userProfileTable["email"][user_index],
+                                             password=''.join(random.choice(characters) for i in range(8))
+                                             )
+                                        )
+            '''
+            user_list_create = list()
+            dealership_list_create = list()
+            userprofile_list_create = list()
+            for index, row in userProfileTable.iterrows():
+                user_list_create.append(User(id=row["user"],
+                                             email=row["email"],
+                                             password=''.join(random.choice(characters) for i in range(8))
+                                             )
+                                        )
+                dealership_list_create.append(Dealership(id=row['dealership']))
+                userProfileList.append(UserProfile(user=User(id=row["user"],
+                                                             email=row["email"],
+                                                             password=''.join(
+                                                                 random.choice(characters) for i in range(8))
+                                                             ),
+                                                   dealership_id=Dealership(id=row['dealership']),
+                                                   isActive=row['isActive'],
+                                                   firstName=row['firstName'],
+                                                   lastName=row['lastName'],
+                                                   email=row['email'])
+                                       )
+            User.objects.bulk_create(user_list_create, update_conflicts=True)
+            Dealership.objects.bulk_create(dealership_list_create, update_conflicts=True)
+            UserProfile.objects.bulk_create(userprofile_list_create, update_conflicts=True)
+            '''
             for index, row in userProfileTable.iterrows():  # enumerate
                 row = userProfileTable.iloc[index]
 
@@ -155,7 +196,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                                        )
 
             UserProfile.objects.bulk_create(userProfileList)
-
+'''
             """try:
                 newUserProfile = UserProfile.objects.create(user, dealership, isActive=True, firstName=user.username,
                                                             lastName="", email="@")
@@ -222,3 +263,19 @@ class Utils:
                 output.append(index)
 
         return output
+
+    def get_exist_and_nonexist_lists(self, list_from_input, model):
+
+        '''Get all ids from model objects'''
+        id_list = model.objects.values_list('id', flat=True)
+
+        not_exist_id_indexes = list()
+        exist_id_indexes = list()
+        for index, id in enumerate(list_from_input):
+            print(id)
+            if id not in list(id_list):
+                not_exist_id_indexes.append(index)
+            else:
+                exist_id_indexes.append(index)
+
+        return not_exist_id_indexes, exist_id_indexes
