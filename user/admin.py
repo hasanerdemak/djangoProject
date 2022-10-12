@@ -123,6 +123,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         return render(request, "test.html", context)
 
         # return TemplateResponse(request, "test.html", context)
+
     def addUserProfile(self, request, obj=None, **kwargs):
         if request.method == "GET":
             return HttpResponseRedirect("../../")
@@ -138,9 +139,9 @@ class UserProfileAdmin(admin.ModelAdmin):
             userProfileList = list()
 
             Util = Utils()
-            exist_user_ids, nonexist_user_ids = Util.get_exist_and_nonexist_lists(list(userProfileTable['user']),
+            nonexist_user_ids, exist_user_ids = Util.get_exist_and_nonexist_lists(list(userProfileTable['user']),
                                                                                   User)
-            exist_dealership_ids, nonexist_dealership_ids = Util.get_exist_and_nonexist_lists(
+            nonexist_dealership_ids, exist_dealership_ids = Util.get_exist_and_nonexist_lists(
                 list(userProfileTable['dealership']), User)
             print(exist_user_ids, nonexist_user_ids)
             print(exist_dealership_ids, nonexist_dealership_ids)
@@ -155,29 +156,35 @@ class UserProfileAdmin(admin.ModelAdmin):
                                         )
             '''
             user_list_create = list()
+            user_list_update = list()
+
             dealership_list_create = list()
+            dealership_list_update = list()
+
             userprofile_list_create = list()
-            for index, row in userProfileTable.iterrows():
-                user_list_create.append(User(id=row["user"],
-                                             email=row["email"],
-                                             password=''.join(random.choice(characters) for i in range(8))
+            print(exist_user_ids)
+            updatable_objects = User.objects.filter(id__in=exist_user_ids)
+            print("qwdqdw", list(updatable_objects))
+
+            for index, user_index in enumerate(nonexist_user_ids):
+                user_list_create.append(User(id=userProfileTable["user"][user_index],
+                                             is_active=userProfileTable["isActive"][user_index],
+                                             email=userProfileTable["email"][user_index],
+                                             password=''.join(random.choice(characters) for i in range(8)),
+                                             username=userProfileTable["firstName"][user_index] +
+                                                      userProfileTable["lastName"][user_index]
                                              )
                                         )
-                dealership_list_create.append(Dealership(id=row['dealership']))
-                userProfileList.append(UserProfile(user=User(id=row["user"],
-                                                             email=row["email"],
-                                                             password=''.join(
-                                                                 random.choice(characters) for i in range(8))
-                                                             ),
-                                                   dealership_id=Dealership(id=row['dealership']),
-                                                   isActive=row['isActive'],
-                                                   firstName=row['firstName'],
-                                                   lastName=row['lastName'],
-                                                   email=row['email'])
-                                       )
-            User.objects.bulk_create(user_list_create, update_conflicts=True)
-            Dealership.objects.bulk_create(dealership_list_create, update_conflicts=True)
-            UserProfile.objects.bulk_create(userprofile_list_create, update_conflicts=True)
+            User.objects.bulk_create(user_list_create)
+
+            updatable_objects = User.objects.filter(id__in=list(userProfileTable['user'][exist_user_ids]))
+            for user, user_index in zip(updatable_objects, exist_user_ids):
+                user.is_active = userProfileTable['isActive'][user_index]
+                user.email = userProfileTable['email'][user_index]
+                user.first_name = userProfileTable['firstName'][user_index]
+                user.last_name = userProfileTable['lastName'][user_index]
+                user.save()
+
             '''
             for index, row in userProfileTable.iterrows():  # enumerate
                 row = userProfileTable.iloc[index]
@@ -274,8 +281,8 @@ class Utils:
 
         not_exist_id_indexes = list()
         exist_id_indexes = list()
+
         for index, id in enumerate(list_from_input):
-            print(id)
             if id not in list(id_list):
                 not_exist_id_indexes.append(index)
             else:
