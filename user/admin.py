@@ -224,9 +224,10 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                                   email=row['email'])
                                                       )
             UserProfile.objects.bulk_create(userprofile_list_forcreate)
-            updatable_objects = User.objects.filter(id__in=list(userProfileTable['id'][exist_dealership_ids]))
+            updatable_objects = UserProfile.objects.filter(id__in=list(userProfileTable['id'][exist_userprofile_ids]))
             # update userprofiles
-            for userprofile, userprofile_index in zip(updatable_objects, exist_dealership_ids):
+
+            for userprofile, userprofile_index in zip(updatable_objects, exist_userprofile_ids):
                 userprofile.user = User(id=userProfileTable['user'][userprofile_index],
                                         is_active=userProfileTable['isActive'][userprofile_index],
                                         email=userProfileTable['user'][userprofile_index],
