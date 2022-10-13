@@ -6,96 +6,100 @@
 
         @import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono');
      * {
-    	 margin: 0;
-    	 padding: 0;
-    	 box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
     }
      ::-moz-selection {
-    	 background: #ff733c;
-    	 color: #FFFFFF;
+        background: #ff733c;
+        color: #FFFFFF;
     }
      ::selection {
-    	 background: #ff733c;
-    	 color: #FFFFFF;
+        background: #ff733c;
+        color: #FFFFFF;
     }
      body {
-    	 overflow-x: hidden;
-    	 background: #E4E6C3;
+        overflow-x: hidden;
+        background: #E4E6C3;
     }
      .custom-textarea {
-    	 position: relative;
-    	 width: 800px;
-    	 max-width: 90%;
-    	 margin: 20px auto;
-    	 border-radius: 5px;
-    	 box-shadow: 0 0 16px rgba(34,39,37,0.3);
-    	 overflow: hidden;
+        position: relative;
+        width: 800px;
+        max-width: 90%;
+        margin: 20px auto;
+        border-radius: 5px;
+        box-shadow: 0 0 16px rgba(34,39,37,0.3);
+        overflow: hidden;
     }
      .custom-textarea::after {
-    	 content: '';
-    	 display: block;
-    	 position: absolute;
-    	 top: 0;
-    	 left: 42px;
-    	 width: 16px;
-    	 height: 100%;
-    	 background: #FFFFFF;
-    	 pointer-events: none;
-    	 z-index: 1;
+        content: '';
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 42px;
+        width: 16px;
+        height: 100%;
+        background: #FFFFFF;
+        pointer-events: none;
+        z-index: 1;
     }
      .custom-textarea > .textarea {
-    	 display: block;
-    	 position: relative;
-    	 z-index: 1;
-    	 width: calc(92%);
-    	 height: 150px;
-    	 min-height: 150px;
-    	 max-height: 90vh;
-    	 margin-left: 58px;
+        display: block;
+        position: relative;
+        z-index: 1;
+        width: calc(92%);
+        height: 150px;
+        min-height: 150px;
+        max-height: 90vh;
+        margin-left: 58px;
          padding: 0px;
-    	 font-size: 16px;
-    	 line-height: 24px;
-    	 font-family: 'Ubuntu Mono', monospace;
-    	 outline: none;
-    	 border: none;
-    	 border-radius: 0 5px 5px 0;
-    	 resize: vertical;
-    	 white-space: pre;
-    	 overflow: auto;
-    	 word-wrap: normal;
-    	 color: #121113;
-    	 background: #FFFFFF;
+        font-size: 16px;
+        line-height: 24px;
+        font-family: 'Ubuntu Mono', monospace;
+        outline: none;
+        border: none;
+        border-radius: 0 5px 5px 0;
+        resize: vertical;
+        white-space: pre;
+        overflow: auto;
+        word-wrap: normal;
+        color: #121113;
+        background: #FFFFFF;
     }
      .custom-textarea > .textarea::-webkit-scrollbar-track {
-    	 border-radius: 0;
-    	 background-color: #ffffff;
+        border-radius: 0;
+        background-color: #ffffff;
     }
      .custom-textarea > .textarea::-webkit-scrollbar {
-    	 width: 12px;
-    	 background-color: #FFFFFF;
+        width: 12px;
+        background-color: #FFFFFF;
     }
      .custom-textarea > .textarea::-webkit-scrollbar-thumb {
-    	 border-radius: 0;
-    	 background-color: #ff733c;
+        border-radius: 0;
+        background-color: #ff733c;
     }
      .custom-textarea > .linenumbers {
-    	 position: absolute;
-    	 top: 0;
-    	 left: 0;
-    	 width: 42px;
-    	 background: #ff733c;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 42px;
+        background: #ff733c;
     }
      .custom-textarea > .linenumbers > .number {
-    	 font-family: 'Ubuntu Mono', monospace;
-    	 font-size: 16px;
-    	 line-height: 24px;
-    	 padding-left: 6px;
-    	 color: #222725;
+        font-family: 'Ubuntu Mono', monospace;
+        font-size: 16px;
+        line-height: 24px;
+        padding-left: 6px;
+        color: #222725;
     }
 
     form {
         max-height: 500px;
         max-lines: 20;
+    }
+
+    span{
+        margin: 5px;
     }
 
     </style>
@@ -147,10 +151,42 @@
         </div>
     </form>
 
-    <!-- TABLE DIV -->
-    <div id="divTable" style="margin-top: 10px">
+    <div style="margin-top: 10px">
         <p style="color: #ff0000; text-indent: 30px; text-transform: uppercase;">{% if error %}{{ error }}{% endif %}</p> <!--class="form-control"-->
+        <!--Error Colors-->
+        <div>
+            {% if missing_spaces_rows %}
+                <span>
+                    <svg id="first-rect-svg" width="15" height="15">
+                        <rect style="fill:#ff5454;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                    </svg>
+                    <label for="first-rect-svg">Missing Cells</label>
+                </span>
+            {% endif %}
 
+            {% if non_valid_spaces_rows %}
+                <span>
+                    <svg id="second-rect-svg" width="15" height="15">
+                        <rect style="fill:#ffcc00;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                    </svg>
+                    <label for="second-rect-svg">Non-Valid Cells</label>
+                </span>
+            {% endif %}
+
+            {% if non_unique_rows %}
+                <span>
+                    <svg id="third-rect-svg" width="15" height="15">
+                        <rect style="fill:#0095ff;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                    </svg>
+                    <label for="third-rect-svg">Non-Unique Rows</label>
+                </span>
+            {% endif %}
+
+        </div>
+        <!-- TABLE DIV -->
+        <div id="divTable">
+
+        </div>
     </div>
 
     <!-- CSV UPLOAD SCRIPT -->
@@ -217,7 +253,7 @@
     <script>
         window.onload = function (){
             try {
-                if (Boolean({{ showTable }})) {
+                if (Boolean({{ show_table }})) {
                     myFunction();
                     paintMissingSpaces();
                 }
@@ -239,8 +275,8 @@
         function paintMissingSpaces(){
             var table = document.getElementById('userProfileTable');
 
-            var missingSpacesRows = {{ missingSpacesRows }};
-            var missingSpacesCols = {{ missingSpacesCols }};
+            var missingSpacesRows = {{ missing_spaces_rows }};
+            var missingSpacesCols = {{ missing_spaces_cols }};
             if (missingSpacesRows === 'None' || missingSpacesCols === 'None'){
                 return;
             }
@@ -249,8 +285,8 @@
                 table.rows[missingSpacesRows[i]+1].cells[missingSpacesCols[i]+1].style.backgroundColor = '#ff5454';
             }
 
-            var nonValidSpacesRows = {{ nonValidSpacesRows }};
-            var nonValidSpacesCols = {{ nonValidSpacesCols }};
+            var nonValidSpacesRows = {{ non_valid_spaces_rows }};
+            var nonValidSpacesCols = {{ non_valid_spaces_cols }};
             if (nonValidSpacesRows === 'None' || nonValidSpacesCols === 'None'){
                 return;
             }
@@ -259,9 +295,19 @@
                 table.rows[nonValidSpacesRows[i]+1].cells[nonValidSpacesCols[i]+1].style.backgroundColor = '#ffcc00';
             }
 
+            var nonUniqueRows = {{ non_unique_rows }};
+            if (nonUniqueRows === 'None'){
+                return;
+            }
+
+            for (let i = 0; i < nonUniqueRows.length; i++) {
+                table.rows[nonUniqueRows[i]+1].style.backgroundColor = '#0095ff';
+            }
+
         }
 
         function myFunction() {
+            console.log("wfmsdkfsdlkfmsl")
 
           var tbl = "<table class='table table-sm table-responsive table-bordered table-striped table-editable' id='userProfileTable'>";
           var lines = document.getElementById("formTextArea").value.split("\n");

@@ -1,6 +1,7 @@
 import io
 import json
 from http.client import HTTPResponse
+from collections import Counter
 import pandas as pd
 import numpy as np
 
@@ -41,6 +42,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     def check_input(self, request, obj=None, **kwargs):
         context = {"text": None,
+                   "non_unique_rows": None,
                    "missing_spaces_rows": None,
                    "missing_spaces_cols": None,
                    "non_valid_spaces_rows": None,
@@ -59,6 +61,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             userProfileTable = pd.read_csv(data, sep=",")
         except pd.errors.ParserError as e:
             context = {"text": text,
+                       "non_unique_rows": None,
                        "missing_spaces_rows": None,
                        "missing_spaces_cols": None,
                        "non_valid_spaces_rows": None,
@@ -74,6 +77,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         missing_spaces_rows = missing_spaces_rows.tolist()
         missing_spaces_cols = missing_spaces_cols.tolist()
 
+        unique_cols = [0, [1, 2]]
         int_cols = [0, 1, 2]
         bool_cols = [3]
         name_cols = [4, 5]
@@ -98,11 +102,17 @@ class UserProfileAdmin(admin.ModelAdmin):
                 non_valid_spaces_rows.append(j)
                 non_valid_spaces_cols.append(i)
 
+        non_unique_rows = []
+        for col in unique_cols:
+            row_list = Util.indexes_of_non_unique_rows(userProfileTable.iloc[:, col])
+            non_unique_rows.extend(row_list)
+
         show_table = 'true'
 
         is_valid = True if (len(non_valid_spaces_rows) == 0 and len(missing_spaces_rows) == 0) else False
 
         context = {"text": text,
+                   "non_unique_rows": non_unique_rows,
                    "missing_spaces_rows": missing_spaces_rows,
                    "missing_spaces_cols": missing_spaces_cols,
                    "non_valid_spaces_rows": non_valid_spaces_rows,
@@ -121,6 +131,8 @@ class UserProfileAdmin(admin.ModelAdmin):
             text = request.POST.get("formTextArea")
             data = io.StringIO(text)
             user_profile_table = pd.read_csv(data, sep=",")
+
+            create_if_not_exist = True if (request.POST.get("formCheckBox") is not None) else False
 
             characters = string.ascii_letters + string.digits + string.punctuation
 
@@ -322,6 +334,21 @@ class Utils:
         output = []
         for index, value in enumerate(value_list):
             if not str(value).replace(" ", "").isalpha():
+                output.append(index)
+
+        return output
+
+    def indexes_of_non_unique_rows(self, value_df):
+        output = []
+        print(type(value_df))
+        if isinstance(value_df, pd.Series):
+            value_list = value_df.tolist()
+        else:
+            value_list = list(value_df.itertuples(index=False, name=None))
+
+        freq = Counter(value_list)
+        for index, value in enumerate(value_list):
+            if freq[value] > 1:
                 output.append(index)
 
         return output
