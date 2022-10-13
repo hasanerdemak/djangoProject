@@ -163,7 +163,6 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             userprofile_list_create = list()
             print(exist_user_ids)
-            print("qwdqdw", list(updatable_objects))
             # For user
             for index, user_index in enumerate(nonexist_user_ids):
                 user_list_create.append(User(id=userProfileTable["user"][user_index],
@@ -195,15 +194,17 @@ class UserProfileAdmin(admin.ModelAdmin):
             userprofile_list_create.append(Dealership.objects.bulk_create(dealership_list_create))
 
             print(userprofile_list_create)
-            exist_userprofile_ids, nonexist_userprofile_ids = Util.get_exist_and_nonexist_lists(userProfileTable['id'],
+            print(list(userProfileTable['id']))
+            nonexist_userprofile_ids, exist_userprofile_ids = Util.get_exist_and_nonexist_lists(list(userProfileTable['id']),
                                                                                                 UserProfile)
 
             userprofile_list_forcreate = []
             userprofile_list_forupdate = []
-            print(nonexist_userprofile_ids)
+            print(list(userProfileTable['id'][nonexist_userprofile_ids]))
             for index, row in userProfileTable.iterrows():
-                print(row['id'])
-                if row['id'] in nonexist_userprofile_ids:
+                print(row['id'] )
+                if row['id'] in list(userProfileTable['id'][nonexist_userprofile_ids]):
+                    print(row['id'],row['user'],row['isActive'],row['email'],row['dealership'])
                     userprofile_list_forcreate.append(UserProfile(id=row['id'],
                                                                   user=User(id=row['user'],
                                                                             is_active=row["isActive"],
@@ -223,10 +224,11 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                                   lastName=row['lastName'],
                                                                   email=row['email'])
                                                       )
+            print("userprofile for create", userprofile_list_forcreate)
             UserProfile.objects.bulk_create(userprofile_list_forcreate)
             updatable_objects = UserProfile.objects.filter(id__in=list(userProfileTable['id'][exist_userprofile_ids]))
             # update userprofiles
-
+            print("updateble userprofiles", updatable_objects)
             for userprofile, userprofile_index in zip(updatable_objects, exist_userprofile_ids):
                 userprofile.user = User(id=userProfileTable['user'][userprofile_index],
                                         is_active=userProfileTable['isActive'][userprofile_index],
