@@ -34,19 +34,19 @@ class UserProfileAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            path('add/', self.checkInput),
-            path('add/addUserProfile/', self.addUserProfile),
+            path('add/', self.check_input),
+            path('add/addUserProfile/', self.add_userprofile),
         ]
         return my_urls + urls
 
-    def checkInput(self, request, obj=None, **kwargs):
+    def check_input(self, request, obj=None, **kwargs):
         context = {"text": None,
-                   "missingSpacesRows": None,
-                   "missingSpacesCols": None,
-                   "nonValidSpacesRows": None,
-                   "nonValidSpacesCols": None,
-                   "showTable": 'false',
-                   "isValid": False,
+                   "missing_spaces_rows": None,
+                   "missing_spaces_cols": None,
+                   "non_valid_spaces_rows": None,
+                   "non_valid_spaces_cols": None,
+                   "show_table": 'false',
+                   "is_valid": False,
                    "error": None}
 
         text = request.POST.get("formTextArea")
@@ -59,28 +59,28 @@ class UserProfileAdmin(admin.ModelAdmin):
             userProfileTable = pd.read_csv(data, sep=",")
         except pd.errors.ParserError as e:
             context = {"text": text,
-                       "missingSpacesRows": None,
-                       "missingSpacesCols": None,
-                       "nonValidSpacesRows": None,
-                       "nonValidSpacesCols": None,
-                       "showTable": 'false',
-                       "isValid": False,
+                       "missing_spaces_rows": None,
+                       "missing_spaces_cols": None,
+                       "non_valid_spaces_rows": None,
+                       "non_valid_spaces_cols": None,
+                       "show_table": 'false',
+                       "is_valid": False,
                        "error": str(e)}
             return render(request, "test.html", context)
 
-        missingSpacesRows = np.where(pd.isnull(userProfileTable))[0]
-        missingSpacesCols = np.where(pd.isnull(userProfileTable))[1]
+        missing_spaces_rows = np.where(pd.isnull(userProfileTable))[0]
+        missing_spaces_cols = np.where(pd.isnull(userProfileTable))[1]
 
-        missingSpacesRows = missingSpacesRows.tolist()
-        missingSpacesCols = missingSpacesCols.tolist()
+        missing_spaces_rows = missing_spaces_rows.tolist()
+        missing_spaces_cols = missing_spaces_cols.tolist()
 
         int_cols = [0, 1, 2]
         bool_cols = [3]
         name_cols = [4, 5]
         email_cols = [6]
 
-        nonValidSpacesRows = []
-        nonValidSpacesCols = []
+        non_valid_spaces_rows = []
+        non_valid_spaces_cols = []
 
         Util = Utils()
         for i in range(len(userProfileTable.columns)):
@@ -95,116 +95,116 @@ class UserProfileAdmin(admin.ModelAdmin):
                 index_list = Util.indexes_of_non_valid_emails(userProfileTable.iloc[:, i].tolist())
 
             for j in index_list:
-                nonValidSpacesRows.append(j)
-                nonValidSpacesCols.append(i)
+                non_valid_spaces_rows.append(j)
+                non_valid_spaces_cols.append(i)
 
-        print(nonValidSpacesRows)
-        print(nonValidSpacesCols)
+        show_table = 'true'
 
-        """A= [1, 2, 3, 4, 5, 7]
-            B= [3, 4, 1, 6, 7, 5]
-            a_indices = [x in B for x in A]
-
-            print(a_indices)"""
-
-        showTable = 'true'
-
-        isValid = True if (len(nonValidSpacesRows) == 0 and len(missingSpacesRows) == 0) else False
+        is_valid = True if (len(non_valid_spaces_rows) == 0 and len(missing_spaces_rows) == 0) else False
 
         context = {"text": text,
-                   "missingSpacesRows": missingSpacesRows,
-                   "missingSpacesCols": missingSpacesCols,
-                   "nonValidSpacesRows": nonValidSpacesRows,
-                   "nonValidSpacesCols": nonValidSpacesCols,
-                   "showTable": showTable,
-                   "isValid": isValid,
+                   "missing_spaces_rows": missing_spaces_rows,
+                   "missing_spaces_cols": missing_spaces_cols,
+                   "non_valid_spaces_rows": non_valid_spaces_rows,
+                   "non_valid_spaces_cols": non_valid_spaces_cols,
+                   "show_table": show_table,
+                   "is_valid": is_valid,
                    "error": None}
 
         return render(request, "test.html", context)
 
-        # return TemplateResponse(request, "test.html", context)
-
-    def addUserProfile(self, request, obj=None, **kwargs):
+    def add_userprofile(self, request, obj=None, **kwargs):
         if request.method == "GET":
             return HttpResponseRedirect("../../")
         else:  # POST
 
             text = request.POST.get("formTextArea")
             data = io.StringIO(text)
-            userProfileTable = pd.read_csv(data, sep=",")
-
-            createIfNotExist = True if (request.POST.get("formCheckBox") is not None) else False
+            user_profile_table = pd.read_csv(data, sep=",")
 
             characters = string.ascii_letters + string.digits + string.punctuation
 
-            Util = Utils()
-            nonexist_user_ids, exist_user_ids = Util.get_exist_and_nonexist_lists(list(userProfileTable['user']),
+            nonexist_user_ids, exist_user_ids = self.get_exist_and_nonexist_lists(list(user_profile_table['user']),
                                                                                   User)
-            nonexist_dealership_ids, exist_dealership_ids = Util.get_exist_and_nonexist_lists(
-                list(userProfileTable['dealership']),
+            nonexist_dealership_ids, exist_dealership_ids = self.get_exist_and_nonexist_lists(
+                list(user_profile_table['dealership']),
                 Dealership)
-            print("-->", exist_user_ids, nonexist_user_ids)
-            print("-->", exist_dealership_ids, nonexist_dealership_ids)
-            '''User object list for creation
-            user_list_create= list()
-            for user_index in enumerate(nonexist_user_ids):
-                user_list_create.append(User(id=userProfileTable["user"][user_index],
-                                             isActive=userProfileTable["isActive"][user_index],
-                                             email=userProfileTable["email"][user_index],
-                                             password=''.join(random.choice(characters) for i in range(8))
-                                             )
-                                        )
-            '''
-            user_list_create = []
-            user_list_update = list()
 
-            dealership_list_create = list()
-            dealership_list_update = list()
+            self.create_user(user_profile_table, nonexist_user_ids, characters)
 
-            userprofile_list_create = list()
-            print(exist_user_ids)
-            # For user
-            for index, user_index in enumerate(nonexist_user_ids):
-                user_list_create.append(User(id=userProfileTable["user"][user_index],
-                                             is_active=userProfileTable["isActive"][user_index],
-                                             email=userProfileTable["email"][user_index],
-                                             password=''.join(random.choice(characters) for i in range(8)),
-                                             username=userProfileTable["firstName"][user_index] +
-                                                      userProfileTable["lastName"][user_index]
-                                             )
-                                        )
-            userprofile_list_create.append(User.objects.bulk_create(user_list_create))
+            self.update_user(user_profile_table, exist_user_ids)
 
-            updatable_objects = User.objects.filter(id__in=list(userProfileTable['user'][exist_user_ids]))
+            self.create_dealership(user_profile_table, nonexist_dealership_ids)
+
+            nonexist_userprofile_ids, exist_userprofile_ids = self.get_exist_and_nonexist_lists(
+                list(user_profile_table['id']),
+                UserProfile)
+
+            self.create_userprofile(user_profile_table, nonexist_userprofile_ids, characters)
+
+            self.update_userprofile(user_profile_table, exist_userprofile_ids, characters)
+
+            return HttpResponseRedirect("..")
+
+    def create_user(self, user_profile_table, nonexist_user_ids, characters):
+        user_list_create = []
+
+        # For user
+        for index, user_index in enumerate(nonexist_user_ids):
+            user_list_create.append(User(id=user_profile_table["user"][user_index],
+                                         is_active=user_profile_table["isActive"][user_index],
+                                         email=user_profile_table["email"][user_index],
+                                         password=''.join(random.choice(characters) for i in range(8)),
+                                         username=user_profile_table["firstName"][user_index] +
+                                                  user_profile_table["lastName"][user_index]
+                                         )
+                                    )
+        try:
+            User.objects.bulk_create(user_list_create)
+        except Exception as e:
+            print(f"Exception Happened for {user_list_create} | {e}")
+
+        return ""
+
+    def update_user(self, user_profile_table, exist_user_ids):
+
+        try:
+
+            updatable_objects = User.objects.filter(id__in=list(user_profile_table['user'][exist_user_ids]))
             for user, user_index in zip(updatable_objects, exist_user_ids):
-                user.is_active = userProfileTable['isActive'][user_index]
-                user.email = userProfileTable['email'][user_index]
-                user.first_name = userProfileTable['firstName'][user_index]
-                user.last_name = userProfileTable['lastName'][user_index]
+                user.is_active = user_profile_table['isActive'][user_index]
+                user.email = user_profile_table['email'][user_index]
+                user.first_name = user_profile_table['firstName'][user_index]
+                user.last_name = user_profile_table['lastName'][user_index]
                 user.save()
+        except Exception as e:
+            print(f"Exception Happened for {updatable_objects} | {e}")
+        return ""
 
+    def create_dealership(self, user_profile_table, nonexist_dealership_ids):
+
+        dealership_list_create = []
+
+        try:
             # For dealership
-            print("swd", nonexist_dealership_ids)
             for index, dealership_index in enumerate(nonexist_dealership_ids):
-                dealership_list_create.append(Dealership(id=userProfileTable["dealership"][dealership_index],
+                dealership_list_create.append(Dealership(id=user_profile_table["dealership"][dealership_index],
                                                          name="D " + str(random.randint(3, 1000)),
                                                          group_id=1
                                                          )
                                               )
-            userprofile_list_create.append(Dealership.objects.bulk_create(dealership_list_create))
+            Dealership.objects.bulk_create(dealership_list_create)
+        except Exception as e:
+            print(f"Exception Happened for {dealership_list_create} | {e}")
 
-            print(userprofile_list_create)
-            print(list(userProfileTable['id']))
-            nonexist_userprofile_ids, exist_userprofile_ids = Util.get_exist_and_nonexist_lists(list(userProfileTable['id']),
-                                                                                                UserProfile)
+        return ""
 
-            userprofile_list_forcreate = []
-            userprofile_list_forupdate = []
-            print(list(userProfileTable['id'][nonexist_userprofile_ids]))
-            for index, row in userProfileTable.iterrows():
-                print(row['id'] )
-                if row['id'] in list(userProfileTable['id'][nonexist_userprofile_ids]):
-                    print(row['id'],row['user'],row['isActive'],row['email'],row['dealership'])
+    def create_userprofile(self, user_profile_table, nonexist_userprofile_ids, characters):
+
+        userprofile_list_forcreate = []
+        try:
+            for index, row in user_profile_table.iterrows():
+                if row['id'] in list(user_profile_table['id'][nonexist_userprofile_ids]):
                     userprofile_list_forcreate.append(UserProfile(id=row['id'],
                                                                   user=User(id=row['user'],
                                                                             is_active=row["isActive"],
@@ -224,77 +224,57 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                                   lastName=row['lastName'],
                                                                   email=row['email'])
                                                       )
-            print("userprofile for create", userprofile_list_forcreate)
             UserProfile.objects.bulk_create(userprofile_list_forcreate)
-            updatable_objects = UserProfile.objects.filter(id__in=list(userProfileTable['id'][exist_userprofile_ids]))
+        except Exception as e:
+            print(f"Exception Happened for {userprofile_list_forcreate} | {e}")
+
+        return ""
+
+    def update_userprofile(self, user_profile_table, exist_userprofile_ids, characters):
+
+        try:
+            updatable_objects = UserProfile.objects.filter(id__in=list(user_profile_table['id'][exist_userprofile_ids]))
             # update userprofiles
-            print("updateble userprofiles", updatable_objects)
             for userprofile, userprofile_index in zip(updatable_objects, exist_userprofile_ids):
-                userprofile.user = User(id=userProfileTable['user'][userprofile_index],
-                                        is_active=userProfileTable['isActive'][userprofile_index],
-                                        email=userProfileTable['user'][userprofile_index],
+                userprofile.user = User(id=user_profile_table['user'][userprofile_index],
+                                        is_active=user_profile_table['isActive'][userprofile_index],
+                                        email=user_profile_table['user'][userprofile_index],
                                         password=''.join(
                                             random.choice(characters) for i in
                                             range(8)),
-                                        username=row["firstName"] + row["lastName"]
+                                        username=user_profile_table["firstName"] + user_profile_table["lastName"]
                                         )
 
-                userprofile.dealership = Dealership(id=userProfileTable["dealership"][userprofile_index],
-                                                    )
-                userprofile.isActive = userProfileTable['isActive'][userprofile_index]
-                userprofile.email = userProfileTable['email'][userprofile_index]
-                userprofile.firstName = userProfileTable['firstName'][userprofile_index]
-                userprofile.lastName = userProfileTable['lastName'][userprofile_index]
+                userprofile.dealership = Dealership(id=user_profile_table["dealership"][userprofile_index], )
+                userprofile.isActive = user_profile_table['isActive'][userprofile_index]
+                userprofile.email = user_profile_table['email'][userprofile_index]
+                userprofile.firstName = user_profile_table['firstName'][userprofile_index]
+                userprofile.lastName = user_profile_table['lastName'][userprofile_index]
                 userprofile.save()
-            '''
-            exist dealerships update suanlık edilmicek
-            updatable_objects = Dealership.objects.filter(id__in=list(userProfileTable['dealership'][exist_user_ids]))
-            for dealership, dealership_index in zip(updatable_objects, exist_dealership_ids):
-                dealership.is_active = userProfileTable['isActive'][dealership_index]
-                dealership.email = userProfileTable['email'][user_index]
-                dealership.first_name = userProfileTable['firstName'][user_index]
-                dealership.last_name = userProfileTable['lastName'][user_index]
-                dealership.save()
-            '''
 
-            '''
-            for index, row in userProfileTable.iterrows():  # enumerate
-                row = userProfileTable.iloc[index]
+        except Exception as e:
+            print(f"Exception Happened for {updatable_objects} | {e}")
 
-                if User.objects.filter(id=row['user']).exists():
-                    username = User.objects.get(id=row['user']).username
+        return ""
+
+    def get_exist_and_nonexist_lists(self, list_from_input, model):
+
+        # Get all ids from model objects
+        try:
+            id_list = model.objects.values_list('id', flat=True)
+
+            not_exist_id_indexes = []
+            exist_id_indexes = []
+
+            for index, id in enumerate(list_from_input):
+                if id not in list(id_list):
+                    not_exist_id_indexes.append(index)
                 else:
-                    username = row['firstName'] + row['lastName']
+                    exist_id_indexes.append(index)
+        except Exception as e:
+            print(f"Exception Happened for {id_list} | {e}")
 
-                userObject, created = User.objects.update_or_create(
-                    username=username,
-                    defaults={'email': row["email"],
-                              'password': ''.join(random.choice(characters) for i in range(8))},
-                )
-
-                if Dealership.objects.filter(id=row['dealership']).exists():
-                    dealershipName = Dealership.objects.get(id=row['dealership']).name
-                else:
-                    dealershipName = "D " + str(random.randint(3, 1000))
-
-                dealershipObject, created = Dealership.objects.update_or_create(
-                    name=dealershipName,
-                    defaults={'group': DealershipGroup.objects.get(id=1)},
-                )
-
-                userProfileList.append(UserProfile(user=User(), dealership=dealershipObject, isActive=True,
-                                                   firstName=row['firstName'], lastName=row['lastName'],
-                                                   email=row['email'])
-                                       )
-
-            UserProfile.objects.bulk_create(userProfileList)
-'''
-            """try:
-                newUserProfile = UserProfile.objects.create(user, dealership, isActive=True, firstName=user.username,
-                                                            lastName="", email="@")
-            except:
-                print("hata")"""
-            return HttpResponseRedirect("..")
+        return not_exist_id_indexes, exist_id_indexes
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
@@ -345,19 +325,3 @@ class Utils:
                 output.append(index)
 
         return output
-
-    def get_exist_and_nonexist_lists(self, list_from_input, model):
-
-        '''Get all ids from model objects'''
-        id_list = model.objects.values_list('id', flat=True)
-
-        not_exist_id_indexes = []
-        exist_id_indexes = []
-
-        for index, id in enumerate(list_from_input):
-            if id not in list(id_list):
-                not_exist_id_indexes.append(index)
-            else:
-                exist_id_indexes.append(index)
-
-        return not_exist_id_indexes, exist_id_indexes
