@@ -44,8 +44,10 @@ class UserProfileAdmin(admin.ModelAdmin):
         context = {"text": None,
                    "missing_spaces_rows": None,
                    "missing_spaces_cols": None,
+                   "missing_spaces_messages": None,
                    "non_valid_spaces_rows": None,
                    "non_valid_spaces_cols": None,
+                   "non_valid_messages": None,
                    "non_unique_rows": None,
                    "non_unique_cols": None,
                    "show_table": 'false',
@@ -57,6 +59,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         if text is None or len(text) == 0:
             return TemplateResponse(request, "test.html", context)
 
+        text = text.rstrip("\r\n")
         data = io.StringIO(text)
         try:
             user_profile_table = pd.read_csv(data, sep=",")
@@ -64,8 +67,10 @@ class UserProfileAdmin(admin.ModelAdmin):
             context = {"text": text,
                        "missing_spaces_rows": None,
                        "missing_spaces_cols": None,
+                       "missing_spaces_messages": None,
                        "non_valid_spaces_rows": None,
                        "non_valid_spaces_cols": None,
+                       "non_valid_messages": None,
                        "non_unique_rows": None,
                        "non_unique_cols": None,
                        "show_table": 'false',
@@ -79,14 +84,18 @@ class UserProfileAdmin(admin.ModelAdmin):
         missing_spaces_rows = missing_spaces_rows.tolist()
         missing_spaces_cols = missing_spaces_cols.tolist()
 
-        """missing_spaces_messages = ''
+        missing_spaces_messages = ''
         if len(missing_spaces_cols) != 0:
-            missing_spaces_messages += '['
-            for col in missing_spaces_cols:
-                missing_spaces_messages += user_profile_table.iloc[:, col].name + ' fields at rows: ' + str(index_list) + ' must be unique.\r\n'
+            missing_spaces_cols_unique_elements = [*set(missing_spaces_cols)]  # remove duplicates
+            for value in missing_spaces_cols_unique_elements:
+                missing_spaces_messages += '"' + user_profile_table.iloc[:, value].name + '" fields at row(s): '
+                value_indexes = [i for i, x in enumerate(missing_spaces_cols) if x == value]
 
-                missing_spaces_messages += user_profile_table.iloc[:, col].name + ', '"""
+                for i in value_indexes:
+                    missing_spaces_messages += str(missing_spaces_rows[i] + 1) + ', '
 
+                missing_spaces_messages = missing_spaces_messages[:len(missing_spaces_messages) - 2]
+                missing_spaces_messages += ' is/are required. \r\n'
 
         unique_cols = [0, [1, 2]]
         int_cols = [0, 1, 2]
@@ -98,6 +107,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         non_valid_spaces_cols = []
 
         Util = Utils()
+        non_valid_messages = ''
         for i in range(len(user_profile_table.columns)):
             index_list = []
             if i in int_cols:
@@ -112,13 +122,17 @@ class UserProfileAdmin(admin.ModelAdmin):
             for j in index_list:
                 non_valid_spaces_rows.append(j)
                 non_valid_spaces_cols.append(i)
+            if len(index_list) != 0:
+                non_valid_messages += '"' + user_profile_table.iloc[:, i].name + '" fields at row(s): ' + str(
+                    Util.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
 
         non_unique_rows = []
         non_unique_cols = []
         non_unique_messages = ''
         for col in unique_cols:
             index_list = Util.indexes_of_non_unique_cells(user_profile_table.iloc[:, col])
-
+            if len(index_list) == 0:
+                break
             if isinstance(col, list):
                 for j in index_list:
                     for c in col:
@@ -126,31 +140,37 @@ class UserProfileAdmin(admin.ModelAdmin):
                         non_unique_cols.append(c)
                 non_unique_messages += '['
                 for c in col:
-                    """cols pair at:
-                    $rows
-                    must be unique"""
                     non_unique_messages += user_profile_table.iloc[:, c].name + ', '
 
                 # Slice string to remove last 2 characters from string
                 non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2] + ']'
-                non_unique_messages += ' pairs at rows: ' + str(index_list) + ' must be unique.\r\n'
+                non_unique_messages += ' pairs at row(s): '
+                for index in index_list:
+                    non_unique_messages += str(index + 1) + ', '
+
+                non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
+                non_unique_messages += ' must be unique. \r\n'
             else:
                 for j in index_list:
                     non_unique_rows.append(j)
                     non_unique_cols.append(col)
-                non_unique_messages += user_profile_table.iloc[:, col].name + ' fields at rows: ' + str(index_list) + ' must be unique.\r\n'
+                non_unique_messages += '"' + user_profile_table.iloc[:, col].name + '" fields at row(s): ' + str(
+                    Util.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
 
         print(non_unique_messages)
 
         show_table = 'true'
 
-        is_valid = True if (len(non_valid_spaces_rows) == 0 and len(missing_spaces_rows) == 0) else False
+        is_valid = True if (len(non_valid_spaces_rows) == 0 and len(missing_spaces_rows) == 0 and len(
+            non_unique_rows) == 0) else False
 
         context = {"text": text,
                    "missing_spaces_rows": missing_spaces_rows,
                    "missing_spaces_cols": missing_spaces_cols,
+                   "missing_spaces_messages": missing_spaces_messages,
                    "non_valid_spaces_rows": non_valid_spaces_rows,
                    "non_valid_spaces_cols": non_valid_spaces_cols,
+                   "non_valid_messages": non_valid_messages,
                    "non_unique_rows": non_unique_rows,
                    "non_unique_cols": non_unique_cols,
                    "non_unique_messages": non_unique_messages,
@@ -220,6 +240,8 @@ class UserProfileAdmin(admin.ModelAdmin):
         try:
 
             updatable_objects = User.objects.filter(id__in=list(user_profile_table['user'][exist_user_ids]))
+            Util = Utils()
+            exist_user_ids = Util.reorder_list(updatable_objects, user_profile_table)
             for user, user_index in zip(updatable_objects, exist_user_ids):
                 user.is_active = user_profile_table['isActive'][user_index]
                 user.email = user_profile_table['email'][user_index]
@@ -287,7 +309,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             for userprofile, userprofile_index in zip(updatable_objects, exist_userprofile_ids):
                 userprofile.user = User(id=user_profile_table['user'][userprofile_index],
                                         is_active=user_profile_table['isActive'][userprofile_index],
-                                        email=user_profile_table['user'][userprofile_index],
+                                        email=user_profile_table['email'][userprofile_index],
                                         password=''.join(
                                             random.choice(characters) for i in
                                             range(8)),
@@ -387,4 +409,21 @@ class Utils:
             if freq[value] > 1:
                 output.append(index)
 
+        return output
+
+    def increase_list_values(self, value_list, increase_amount):
+        output = []
+        for value in value_list:
+            output.append(value + increase_amount)
+        return output
+
+    def reorder_list(self, updatable_list, table, model_str):
+        output = []
+        for value in updatable_list:
+            if model_str == 'User':
+                output.append(table['user'].values.tolist().index(value.id))
+            if model_str == 'User':
+                output.append(table['dealership'].values.tolist().index(value.id))
+            if model_str == 'UserProfile':
+                output.append(table['id'].values.tolist().index(value.user_id))
         return output

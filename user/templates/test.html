@@ -47,7 +47,7 @@
         display: block;
         position: relative;
         z-index: 1;
-        width: calc(92%);
+        width: calc(95%);
         height: 150px;
         min-height: 150px;
         max-height: 90vh;
@@ -91,6 +91,10 @@
         line-height: 24px;
         padding-left: 6px;
         color: #222725;
+    }
+
+    .textarea[readonly] {
+        background-color: rgba(0, 0, 0, 0.1);
     }
 
     form {
@@ -184,7 +188,7 @@
         <!--Error Colors-->
         <div>
             {% if missing_spaces_rows %}
-                <span class="hovertext" data-hover="Hello, this is the tooltip">
+                <span class="hovertext" data-hover="{{ missing_spaces_messages }}">
                     <svg id="first-rect-svg" width="15" height="15">
                         <rect style="fill:#ff5454;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
                     </svg>
@@ -193,7 +197,7 @@
             {% endif %}
 
             {% if non_valid_spaces_rows %}
-                <span class="hovertext" data-hover="Hello, this is the tooltip">
+                <span class="hovertext" data-hover="{{ non_valid_messages }}">
                     <svg id="second-rect-svg" width="15" height="15">
                         <rect style="fill:#ffcc00;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
                     </svg>
@@ -283,7 +287,7 @@
             try {
                 if (Boolean({{ show_table }})) {
                     myFunction();
-                    paintMissingSpaces();
+                    paintWrongSpaces();
                 }
             } catch (e){
                 console.error(e);
@@ -300,7 +304,7 @@
             }
         })*/
 
-        function paintMissingSpaces(){
+        function paintWrongSpaces(){
             var table = document.getElementById('userProfileTable');
 
             var missingSpacesRows = {{ missing_spaces_rows }};
@@ -313,16 +317,6 @@
                 table.rows[missingSpacesRows[i]+1].cells[missingSpacesCols[i]+1].style.backgroundColor = '#ff5454';
             }
 
-            var nonValidSpacesRows = {{ non_valid_spaces_rows }};
-            var nonValidSpacesCols = {{ non_valid_spaces_cols }};
-            if (nonValidSpacesRows === 'None' || nonValidSpacesCols === 'None'){
-                return;
-            }
-
-            for (let i = 0; i < nonValidSpacesCols.length; i++) {
-                table.rows[nonValidSpacesRows[i]+1].cells[nonValidSpacesCols[i]+1].style.backgroundColor = '#ffcc00';
-            }
-
             var nonUniqueRows = {{ non_unique_rows }};
             var nonUniqueCols = {{ non_unique_cols }};
             if (nonUniqueRows === 'None' || nonUniqueCols === 'None'){
@@ -331,6 +325,16 @@
 
             for (let i = 0; i < nonUniqueCols.length; i++) {
                 table.rows[nonUniqueRows[i]+1].cells[nonUniqueCols[i]+1].style.backgroundColor = '#0095ff';
+            }
+
+            var nonValidSpacesRows = {{ non_valid_spaces_rows }};
+            var nonValidSpacesCols = {{ non_valid_spaces_cols }};
+            if (nonValidSpacesRows === 'None' || nonValidSpacesCols === 'None'){
+                return;
+            }
+
+            for (let i = 0; i < nonValidSpacesCols.length; i++) {
+                table.rows[nonValidSpacesRows[i]+1].cells[nonValidSpacesCols[i]+1].style.backgroundColor = '#ffcc00';
             }
 
         }
