@@ -42,11 +42,12 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     def check_input(self, request, obj=None, **kwargs):
         context = {"text": None,
-                   "non_unique_rows": None,
                    "missing_spaces_rows": None,
                    "missing_spaces_cols": None,
                    "non_valid_spaces_rows": None,
                    "non_valid_spaces_cols": None,
+                   "non_unique_rows": None,
+                   "non_unique_cols": None,
                    "show_table": 'false',
                    "is_valid": False,
                    "error": None}
@@ -58,24 +59,34 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         data = io.StringIO(text)
         try:
-            userProfileTable = pd.read_csv(data, sep=",")
+            user_profile_table = pd.read_csv(data, sep=",")
         except pd.errors.ParserError as e:
             context = {"text": text,
-                       "non_unique_rows": None,
                        "missing_spaces_rows": None,
                        "missing_spaces_cols": None,
                        "non_valid_spaces_rows": None,
                        "non_valid_spaces_cols": None,
+                       "non_unique_rows": None,
+                       "non_unique_cols": None,
                        "show_table": 'false',
                        "is_valid": False,
                        "error": str(e)}
             return render(request, "test.html", context)
 
-        missing_spaces_rows = np.where(pd.isnull(userProfileTable))[0]
-        missing_spaces_cols = np.where(pd.isnull(userProfileTable))[1]
+        missing_spaces_rows = np.where(pd.isnull(user_profile_table))[0]
+        missing_spaces_cols = np.where(pd.isnull(user_profile_table))[1]
 
         missing_spaces_rows = missing_spaces_rows.tolist()
         missing_spaces_cols = missing_spaces_cols.tolist()
+
+        """missing_spaces_messages = ''
+        if len(missing_spaces_cols) != 0:
+            missing_spaces_messages += '['
+            for col in missing_spaces_cols:
+                missing_spaces_messages += user_profile_table.iloc[:, col].name + ' fields at rows: ' + str(index_list) + ' must be unique.\r\n'
+
+                missing_spaces_messages += user_profile_table.iloc[:, col].name + ', '"""
+
 
         unique_cols = [0, [1, 2]]
         int_cols = [0, 1, 2]
@@ -87,36 +98,62 @@ class UserProfileAdmin(admin.ModelAdmin):
         non_valid_spaces_cols = []
 
         Util = Utils()
-        for i in range(len(userProfileTable.columns)):
+        for i in range(len(user_profile_table.columns)):
             index_list = []
             if i in int_cols:
-                index_list = Util.indexes_of_non_int_values(userProfileTable.iloc[:, i].tolist())
+                index_list = Util.indexes_of_non_int_values(user_profile_table.iloc[:, i].tolist())
             if i in bool_cols:
-                index_list = Util.indexes_of_non_boolean_values(userProfileTable.iloc[:, i].tolist())
+                index_list = Util.indexes_of_non_boolean_values(user_profile_table.iloc[:, i].tolist())
             if i in name_cols:
-                index_list = Util.indexes_of_non_valid_names(userProfileTable.iloc[:, i].tolist())
+                index_list = Util.indexes_of_non_valid_names(user_profile_table.iloc[:, i].tolist())
             if i in email_cols:
-                index_list = Util.indexes_of_non_valid_emails(userProfileTable.iloc[:, i].tolist())
+                index_list = Util.indexes_of_non_valid_emails(user_profile_table.iloc[:, i].tolist())
 
             for j in index_list:
                 non_valid_spaces_rows.append(j)
                 non_valid_spaces_cols.append(i)
 
         non_unique_rows = []
+        non_unique_cols = []
+        non_unique_messages = ''
         for col in unique_cols:
-            row_list = Util.indexes_of_non_unique_rows(userProfileTable.iloc[:, col])
-            non_unique_rows.extend(row_list)
+            index_list = Util.indexes_of_non_unique_cells(user_profile_table.iloc[:, col])
+
+            if isinstance(col, list):
+                for j in index_list:
+                    for c in col:
+                        non_unique_rows.append(j)
+                        non_unique_cols.append(c)
+                non_unique_messages += '['
+                for c in col:
+                    """cols pair at:
+                    $rows
+                    must be unique"""
+                    non_unique_messages += user_profile_table.iloc[:, c].name + ', '
+
+                # Slice string to remove last 2 characters from string
+                non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2] + ']'
+                non_unique_messages += ' pairs at rows: ' + str(index_list) + ' must be unique.\r\n'
+            else:
+                for j in index_list:
+                    non_unique_rows.append(j)
+                    non_unique_cols.append(col)
+                non_unique_messages += user_profile_table.iloc[:, col].name + ' fields at rows: ' + str(index_list) + ' must be unique.\r\n'
+
+        print(non_unique_messages)
 
         show_table = 'true'
 
         is_valid = True if (len(non_valid_spaces_rows) == 0 and len(missing_spaces_rows) == 0) else False
 
         context = {"text": text,
-                   "non_unique_rows": non_unique_rows,
                    "missing_spaces_rows": missing_spaces_rows,
                    "missing_spaces_cols": missing_spaces_cols,
                    "non_valid_spaces_rows": non_valid_spaces_rows,
                    "non_valid_spaces_cols": non_valid_spaces_cols,
+                   "non_unique_rows": non_unique_rows,
+                   "non_unique_cols": non_unique_cols,
+                   "non_unique_messages": non_unique_messages,
                    "show_table": show_table,
                    "is_valid": is_valid,
                    "error": None}
@@ -338,9 +375,8 @@ class Utils:
 
         return output
 
-    def indexes_of_non_unique_rows(self, value_df):
+    def indexes_of_non_unique_cells(self, value_df):
         output = []
-        print(type(value_df))
         if isinstance(value_df, pd.Series):
             value_list = value_df.tolist()
         else:
