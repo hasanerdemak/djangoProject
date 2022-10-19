@@ -25,7 +25,6 @@ import string
 # Register your models here.
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ["user", "dealership"]
-
     # fields = ("user", "dealership")
     # add_form_template = "test.html"
 
@@ -97,65 +96,68 @@ class UserProfileAdmin(admin.ModelAdmin):
                 missing_spaces_messages = missing_spaces_messages[:len(missing_spaces_messages) - 2]
                 missing_spaces_messages += ' is/are required. \r\n'
 
-        unique_cols = [0, [1, 2]]
+        """unique_cols = [0, [1, 2]]
         int_cols = [0, 1, 2]
-        bool_cols = [3]
-        name_cols = [4, 5]
-        email_cols = [6]
+        bool_cols = [4]
+        name_cols = [5, 6]
+        email_cols = [7]"""
+        unique_cols = ["id", ["user", "dealership"]]
+
+        int_cols = ["id", "user", "dealership"]
+        bool_cols = ["isActive"]
+        name_cols = ["firstName", "lastName"]
+        email_cols = ["email"]
 
         non_valid_spaces_rows = []
         non_valid_spaces_cols = []
 
         Util = Utils()
         non_valid_messages = ''
-        for i in range(len(user_profile_table.columns)):
+        for col in user_profile_table.columns:
             index_list = []
-            if i in int_cols:
-                index_list = Util.indexes_of_non_int_values(user_profile_table.iloc[:, i].tolist())
-            if i in bool_cols:
-                index_list = Util.indexes_of_non_boolean_values(user_profile_table.iloc[:, i].tolist())
-            if i in name_cols:
-                index_list = Util.indexes_of_non_valid_names(user_profile_table.iloc[:, i].tolist())
-            if i in email_cols:
-                index_list = Util.indexes_of_non_valid_emails(user_profile_table.iloc[:, i].tolist())
+            if col in int_cols:
+                index_list = Util.indexes_of_non_int_values(user_profile_table[col].tolist())
+            if col in bool_cols:
+                index_list = Util.indexes_of_non_boolean_values(user_profile_table[col].tolist())
+            if col in name_cols:
+                index_list = Util.indexes_of_non_valid_names(user_profile_table[col].tolist())
+            if col in email_cols:
+                index_list = Util.indexes_of_non_valid_emails(user_profile_table[col].tolist())
 
+            i = user_profile_table.columns.get_loc(col)
             for j in index_list:
                 non_valid_spaces_rows.append(j)
                 non_valid_spaces_cols.append(i)
             if len(index_list) != 0:
-                non_valid_messages += '"' + user_profile_table.iloc[:, i].name + '" fields at row(s): ' + str(
+                non_valid_messages += '"' + user_profile_table[col].name + '" fields at row(s): ' + str(
                     Util.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
 
         non_unique_rows = []
         non_unique_cols = []
         non_unique_messages = ''
         for col in unique_cols:
-            index_list = Util.indexes_of_non_unique_cells(user_profile_table.iloc[:, col])
-            if len(index_list) == 0:
-                break
-            if isinstance(col, list):
-                for j in index_list:
-                    for c in col:
+            index_list = Util.indexes_of_non_unique_cells(user_profile_table[col])
+            if len(index_list) != 0:
+                if isinstance(col, list):
+                    for j in index_list:
+                        for c in col:
+                            i = user_profile_table.columns.get_loc(c)
+                            non_unique_rows.append(j)
+                            non_unique_cols.append(i)
+
+                    non_unique_messages += str(col) + ' pairs at row(s): '
+                    for index in index_list:
+                        non_unique_messages += str(index + 1) + ', '
+
+                    non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
+                    non_unique_messages += ' must be unique. \r\n'
+                else:
+                    i = user_profile_table.columns.get_loc(col)
+                    for j in index_list:
                         non_unique_rows.append(j)
-                        non_unique_cols.append(c)
-                non_unique_messages += '['
-                for c in col:
-                    non_unique_messages += user_profile_table.iloc[:, c].name + ', '
-
-                # Slice string to remove last 2 characters from string
-                non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2] + ']'
-                non_unique_messages += ' pairs at row(s): '
-                for index in index_list:
-                    non_unique_messages += str(index + 1) + ', '
-
-                non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
-                non_unique_messages += ' must be unique. \r\n'
-            else:
-                for j in index_list:
-                    non_unique_rows.append(j)
-                    non_unique_cols.append(col)
-                non_unique_messages += '"' + user_profile_table.iloc[:, col].name + '" fields at row(s): ' + str(
-                    Util.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
+                        non_unique_cols.append(i)
+                    non_unique_messages += '"' + user_profile_table[col].name + '" fields at row(s): ' + str(
+                        Util.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
 
         print(non_unique_messages)
 
@@ -205,6 +207,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             self.create_dealership(user_profile_table, nonexist_dealership_ids)
 
+            self.update_dealership(user_profile_table, exist_dealership_ids)
+
             nonexist_userprofile_ids, exist_userprofile_ids = self.get_exist_and_nonexist_lists(
                 list(user_profile_table['id']),
                 UserProfile)
@@ -241,7 +245,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             updatable_objects = User.objects.filter(id__in=list(user_profile_table['user'][exist_user_ids]))
             Util = Utils()
-            exist_user_ids = Util.reorder_list(updatable_objects, user_profile_table)
+            exist_user_ids = Util.reorder_list(updatable_objects, user_profile_table, "User")
             for user, user_index in zip(updatable_objects, exist_user_ids):
                 user.is_active = user_profile_table['isActive'][user_index]
                 user.email = user_profile_table['email'][user_index]
@@ -270,6 +274,20 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         return ""
 
+    def update_dealership(self, user_profile_table, exist_dealership_ids):
+
+        try:
+
+            updatable_objects = Dealership.objects.filter(id__in=list(user_profile_table['dealership'][exist_dealership_ids]))
+            Util = Utils()
+            exist_dealership_ids = Util.reorder_list(updatable_objects, user_profile_table, "Dealership")
+            for dealership, dealership_index in zip(updatable_objects, exist_dealership_ids):
+                dealership.name = user_profile_table['dealershipName'][dealership_index]
+                dealership.save()
+        except Exception as e:
+            print(f"Exception Happened for {updatable_objects} | {e}")
+        return ""
+
     def create_userprofile(self, user_profile_table, nonexist_userprofile_ids, characters):
 
         userprofile_list_forcreate = []
@@ -290,9 +308,10 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                                                             random.randint(3, 1000)),
                                                                                         group_id=1
                                                                                         ),
-                                                                  isActive=True,
-                                                                  firstName=row['firstName'],
-                                                                  lastName=row['lastName'],
+                                                                  dealership_name=row['dealershipName'],
+                                                                  is_active=True,
+                                                                  first_name=row['firstName'],
+                                                                  last_name=row['lastName'],
                                                                   email=row['email'])
                                                       )
             UserProfile.objects.bulk_create(userprofile_list_forcreate)
@@ -305,6 +324,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         try:
             updatable_objects = UserProfile.objects.filter(id__in=list(user_profile_table['id'][exist_userprofile_ids]))
+            Util = Utils()
+            exist_userprofile_ids = Util.reorder_list(updatable_objects, user_profile_table, "UserProfile")
             # update userprofiles
             for userprofile, userprofile_index in zip(updatable_objects, exist_userprofile_ids):
                 userprofile.user = User(id=user_profile_table['user'][userprofile_index],
@@ -317,10 +338,11 @@ class UserProfileAdmin(admin.ModelAdmin):
                                         )
 
                 userprofile.dealership = Dealership(id=user_profile_table["dealership"][userprofile_index], )
-                userprofile.isActive = user_profile_table['isActive'][userprofile_index]
+                userprofile.dealership_name = user_profile_table['dealershipName'][userprofile_index]
+                userprofile.is_active = user_profile_table['isActive'][userprofile_index]
+                userprofile.first_name = user_profile_table['firstName'][userprofile_index]
+                userprofile.last_name = user_profile_table['lastName'][userprofile_index]
                 userprofile.email = user_profile_table['email'][userprofile_index]
-                userprofile.firstName = user_profile_table['firstName'][userprofile_index]
-                userprofile.lastName = user_profile_table['lastName'][userprofile_index]
                 userprofile.save()
 
         except Exception as e:
@@ -422,7 +444,7 @@ class Utils:
         for value in updatable_list:
             if model_str == 'User':
                 output.append(table['user'].values.tolist().index(value.id))
-            if model_str == 'User':
+            if model_str == 'Dealership':
                 output.append(table['dealership'].values.tolist().index(value.id))
             if model_str == 'UserProfile':
                 output.append(table['id'].values.tolist().index(value.user_id))
