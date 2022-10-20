@@ -27,6 +27,15 @@ class DealershipAdmin(admin.ModelAdmin):
         return model._meta.fields
 
     def check_input(self, request, obj=None, **kwargs):
+        context = {"dealership_dict": None,
+                   "field_dict": None,
+                   "form": None,
+                   "non_unique_rows": None,
+                   "non_unique_cols": None,
+                   "show_table": 'false',
+                   "fields_taken": True,
+                   "error": None}
+
         dealership_dict = {
             "DG 1": [
                 "D1", "D2"
@@ -47,9 +56,21 @@ class DealershipAdmin(admin.ModelAdmin):
             if index != 0:
                 field_dict[field.name] = field.verbose_name
 
-        fields = request.POST.get("fields").split(',')
+        fields = request.POST.get("fields")
+        dealerships = request.POST.get("dealerships")
 
-        form = DealershipForm(show_fields=fields)
+        if dealerships is None or len(dealerships) == 0 or fields is None or len(fields) == 0:
+            context = {"dealership_dict": dealership_dict,
+                       "field_dict": field_dict,
+                       "form": None,
+                       "non_unique_rows": None,
+                       "non_unique_cols": None,
+                       "show_table": 'false',
+                       "fields_taken": True,
+                       "error": None}
+            return TemplateResponse(request, "dealership_edit.html", context)
+
+        form = DealershipForm(show_fields=fields.split(','))
 
         context = {"dealership_dict": dealership_dict,
                    "field_dict": field_dict,
@@ -60,23 +81,7 @@ class DealershipAdmin(admin.ModelAdmin):
                    "fields_taken": True,
                    "error": None}
 
-        text = request.POST.get("dealerships")
-
-        if text is None or len(text) == 0:
-            return TemplateResponse(request, "dealership_edit.html", context)
-
-        """is_valid = True if (len(non_valid_spaces_rows) == 0 and len(missing_spaces_rows) == 0 and len(
-            non_unique_rows) == 0) else False"""
-
-        """context = {"text": text,
-                   "non_unique_rows": non_unique_rows,
-                   "non_unique_cols": non_unique_cols,
-                   "non_unique_messages": non_unique_messages,
-                   "show_table": show_table,
-                   "is_valid": is_valid,
-                   "error": None}"""
-
-        return TemplateResponse(request, "test.html", context)
+        return TemplateResponse(request, "dealership_edit.html", context)
 
     def update_dealerships(self, request, obj=None, **kwargs):
         if request.method == "GET":
@@ -91,9 +96,9 @@ class DealershipAdmin(admin.ModelAdmin):
 
     """
     def update_dealerships(self, user_profile_table, exist_dealership_ids):
-
+    
         try:
-
+    
             updatable_objects = Dealership.objects.filter(id__in=list(user_profile_table['dealership'][exist_dealership_ids]))
             Util = Utils()
             exist_dealership_ids = Util.reorder_list(updatable_objects, user_profile_table, "Dealership")
@@ -103,7 +108,7 @@ class DealershipAdmin(admin.ModelAdmin):
         except Exception as e:
             print(f"Exception Happened for {updatable_objects} | {e}")
         return ""
-"""
+    """
 
 
 admin.site.register(Dealership, DealershipAdmin)
