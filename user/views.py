@@ -10,4 +10,4 @@ from user.models import UserProfile
 
 
 def index(request):
-    return HttpResponse("qweqwe")
+    return HttpResponse("user")
