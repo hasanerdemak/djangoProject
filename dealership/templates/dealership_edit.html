@@ -8,7 +8,7 @@
                 margin: 5px;
             }
 
-            form{
+            form {
                 margin-bottom: 10px;
             }
         </style>
@@ -23,48 +23,12 @@
         <div class="grid-container form-group" style="display: flex;flex-wrap: wrap;width: 100%; text-align: center">
             <div class="grid-item" style="display: flex;flex-wrap: wrap;width: 50%; text-align: center">
                 <label for="select-dealership">Select Dealership</label>
-                <hr>
-                <select size="1" id="select-dealership" multiple name="dealerships" placeholder="Select Dealership"
-                        data-search="true"
-                        data-silent-initial-value-set="true">
-                    <script>
-                        var dealershipDict =
-                        {{ dealership_dict|safe }}
-
-                        var multiSelectList = document.getElementById("select-dealership")
-                        var myHTML = ""
-                        for (const [dealershipGroup, dealerships] of Object.entries(dealershipDict)) {
-                            myHTML += "<optgroup label='" + dealershipGroup + "'>"
-                            for (var j = 0; j < dealerships.length; j++) {
-                                myHTML += '<option value=' + dealerships[j] + '>' + dealerships[j] + '</option>'
-                            }
-                            myHTML += '</optgroup>'
-                        }
-                        multiSelectList.innerHTML = myHTML
-                    </script>
-                </select>
+                <div id="select-dealership"></div>
             </div>
-
 
             <div class="grid-item" style="display: flex;flex-wrap: wrap;width: 50%; text-align: center">
                 <label for="select-field">Select Field</label>
-                <hr>
-                <select id="select-field" multiple name="fields" placeholder="Select Field"
-                        data-search="true"
-                        data-silent-initial-value-set="true">
-                    <script>
-                        var fieldDict =
-                        {{ field_dict|safe }}
-
-                        var multiSelectList = document.getElementById("select-field")
-                        var myHTML = ""
-                        for (const [fieldName, fieldVerboseName] of Object.entries(fieldDict)) {
-                            myHTML += '<option value=' + fieldName + '>' + fieldVerboseName + '</option>'
-                        }
-
-                        multiSelectList.innerHTML = myHTML
-                    </script>
-                </select>
+                <div id="select-field"></div>
             </div>
         </div>
         <hr>
@@ -75,47 +39,52 @@
             </button>
         </div>
 
+        <!-- Update DIV-->
+        {% if fields_taken %}
+            <div>
+                {% csrf_token %}
+                {{ form.as_p }}
+
+                <hr>
+
+                <div class="d-flex justify-content-center">
+                    <button type="submit" class="btn btn-primary" formaction="updateDealerships/" name="updateButton" value="update"
+                            {% if is_valid %} {% else %}  {% endif %}>
+                        Save Edited Fields
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+
     </form>
-
-    {% if fields_taken %}
-    <form action="updateDealerships/" method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-
-        <hr>
-
-        <div class="d-flex justify-content-center">
-            <button type="submit" class="btn btn-primary" name="updateButton" value="update"
-                    {% if is_valid %} {% else %} disabled {% endif %}>
-                Save Edited Fields
-            </button>
-        </div>
-    </form>
-    {% else %} {% endif %}
-
 
     <script type="text/javascript" src={% static "js/virtual-select.min.js" %}></script>
     <script type="text/javascript">
         VirtualSelect.init({
-            ele: '#select-dealership'
+            ele: '#select-dealership',
+            name: "dealerships",
+            multiple: true,
+            search: true,
+            placeholder: "Select Dealership",
+            showSelectedOptionsFirst: true,
+            required: true,
+            options: {{dealership_opts | safe}},
+            selectedValue: {{selected_dealerships | safe}}
         });
         VirtualSelect.init({
-            ele: '#select-field'
+            ele: '#select-field',
+            name: "fields",
+            multiple: true,
+            search: true,
+            placeholder: "Select Field",
+            showSelectedOptionsFirst: true,
+            required: true,
+            options: {{field_opts | safe}},
+            selectedValue: {{selected_fields | safe}}
         });
 
-        window.onload = function () {
-
-            /*var $select = $('#mySelect');
-            $.each(opt, function(key, value){
-                var group = $('<optgroup label="' + key + '" />');
-                $.each(value, function(){
-                    $('<option />').html(this.name).appendTo(group);
-                });
-                group.appendTo($select);
-            });*/
-
-        }
     </script>
+
 
 
 {% endblock %}
