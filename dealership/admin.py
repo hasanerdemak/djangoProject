@@ -5,14 +5,22 @@ from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path
 
+from category.models import AssociatedCategory, Category
 from .forms import DealershipForm
 from .models import Dealership, DealershipGroup
 
 
 # Register your models here.
+class AssociatedCategoryInline(admin.StackedInline):
+    model = AssociatedCategory
+    verbose_name_plural = "Associated Categories"
+    extra = 1
+
 
 class DealershipAdmin(admin.ModelAdmin):
     change_list_template = "my_change_list.html"
+    inlines = [AssociatedCategoryInline]
+
     class Meta:
         model = Dealership
 
@@ -23,9 +31,6 @@ class DealershipAdmin(admin.ModelAdmin):
             path('updateDealerships/updateDealerships/', self.update_dealerships),
         ]
         return my_urls + urls
-
-    def get_model_fields(self, model):
-        return model._meta.fields
 
     def check_input(self, request, obj=None, **kwargs):
         # fill multiselect lists
@@ -40,23 +45,13 @@ class DealershipAdmin(admin.ModelAdmin):
                     dealership_dict = {"label": dealership_name, "value": dealership_id}
                     dealership_group_dict["options"].append(dealership_dict)
                 dealership_opts.append(dealership_group_dict)
-        """dealership_dict = dict()
-        for dealership_group in dealership_groups:
-            dealerships_list = list(Dealership.objects.filter(group_id=dealership_group.id).values_list('name', flat=True))
-            if len(dealerships_list) != 0:
-                dealership_dict[dealership_group.name] = dealerships_list
-        """
 
         field_opts = []
-        for index, field in enumerate(self.get_model_fields(Dealership)):
+        for index, field in enumerate(Dealership._meta.fields):
             if index != 0:
                 field_dict = {"label": field.verbose_name, "value": field.name}
                 field_opts.append(field_dict)
-        """field_dict = dict()
-        for index, field in enumerate(self.get_model_fields(Dealership)):
-            if index != 0:
-                field_dict[field.name] = field.verbose_name"""
-
+        field_opts.append({"label": 'Category', "value": 'category'})
         selected_fields = request.POST.get("fields")
         selected_dealerships = request.POST.get("dealerships")
 
@@ -98,9 +93,19 @@ class DealershipAdmin(admin.ModelAdmin):
             selected_fields_list = request.POST.get("fields").split(',')
             selected_dealerships_list = request.POST.get("dealerships").split(',')
 
-            dealerships = Dealership.objects.filter(id__in=selected_dealerships_list)
-            for selected_field in selected_fields_list:
-                dealerships.update(**{selected_field: request.POST.get(selected_field)})
+            associated_category_list = []
+            try:
+                dealerships = Dealership.objects.filter(id__in=selected_dealerships_list)
+                for selected_field in selected_fields_list:
+                    if selected_field == "category":
+                        for dealership in dealerships:
+                            for category in request.POST.get(selected_field):
+                                associated_category_list.append(AssociatedCategory(dealership_id=dealership.id, category_id=int(category)))
+                    else:
+                        dealerships.update(**{selected_field: request.POST.get(selected_field)})
+                AssociatedCategory.objects.bulk_create(associated_category_list)
+            except Exception as e:
+                print(f"Exception Happened for {associated_category_list} | {e}")
 
             return HttpResponseRedirect("../../")
 

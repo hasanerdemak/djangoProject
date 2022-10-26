@@ -20,5 +20,7 @@ class UserProfile(models.Model):
     last_name = models.CharField(max_length=50, verbose_name="Last Name", null=False, blank=False)
     email = models.CharField(max_length=50, verbose_name="Email", null=False, blank=False)
 
+    class Meta:
+        unique_together = (('user','dealership'),)
     def __str__(self):
-        return self.user.username
+        return self.user.username + " - " + self.dealership.name
