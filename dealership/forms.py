@@ -8,7 +8,7 @@ from dealership.models import Dealership
 
 class DealershipForm(forms.ModelForm):
     category = forms.ModelMultipleChoiceField(queryset=Category.objects.all(),
-                                              )
+                                              widget= forms.CheckboxSelectMultiple)
     class Meta:
         model = Dealership
         fields = '__all__'
