@@ -99,11 +99,12 @@ class DealershipAdmin(admin.ModelAdmin):
                 for selected_field in selected_fields_list:
                     if selected_field == "category":
                         for dealership in dealerships:
+                            AssociatedCategory.objects.filter(dealership_id=dealership.id).delete()
                             for category in request.POST.get(selected_field):
                                 associated_category_list.append(AssociatedCategory(dealership_id=dealership.id, category_id=int(category)))
+                        AssociatedCategory.objects.bulk_create(associated_category_list)
                     else:
                         dealerships.update(**{selected_field: request.POST.get(selected_field)})
-                AssociatedCategory.objects.bulk_create(associated_category_list)
             except Exception as e:
                 print(f"Exception Happened for {associated_category_list} | {e}")
 
