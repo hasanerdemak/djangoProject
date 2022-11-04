@@ -32,6 +32,8 @@ class DealershipAdmin(admin.ModelAdmin):
         ]
         return my_urls + urls
 
+
+
     def check_input(self, request, obj=None, **kwargs):
         # fill multiselect lists
         dealership_groups = DealershipGroup.objects.all()
@@ -92,15 +94,17 @@ class DealershipAdmin(admin.ModelAdmin):
         else:  # POST
             selected_fields_list = request.POST.get("fields").split(',')
             selected_dealerships_list = request.POST.get("dealerships").split(',')
-
+            print(selected_dealerships_list)
+            print(selected_fields_list)
             associated_category_list = []
+            aws= request.POST.getlist('category')
             try:
                 dealerships = Dealership.objects.filter(id__in=selected_dealerships_list)
                 for selected_field in selected_fields_list:
                     if selected_field == "category":
                         for dealership in dealerships:
                             AssociatedCategory.objects.filter(dealership_id=dealership.id).delete()
-                            for category in request.POST.get(selected_field):
+                            for category in request.POST.getlist('category[]'):
                                 associated_category_list.append(AssociatedCategory(dealership_id=dealership.id, category_id=int(category)))
                         AssociatedCategory.objects.bulk_create(associated_category_list)
                     else:
