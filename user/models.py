@@ -1,15 +1,11 @@
 import sys
 
-# Create your models here.
-
 from django.db import models
 from django.contrib.auth.models import User
 
 sys.path.append('/Users/hasanerdemak/PycharmProjects/djangoProject')
 from dealership.models import Dealership
 
-
-# Create your models here.
 
 class UserProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -21,6 +17,7 @@ class UserProfile(models.Model):
     email = models.CharField(max_length=50, verbose_name="Email", null=False, blank=False)
 
     class Meta:
-        unique_together = (('user','dealership'),)
+        unique_together = (('user', 'dealership'),)
+
     def __str__(self):
         return self.user.username + " - " + self.dealership.name

@@ -16,6 +16,9 @@
               integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
               crossorigin="anonymous">
         <link rel="stylesheet" href={% static "css/virtual-select.min.css" %}>
+
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     {% endblock %}
 
     <form action="" method="post">
@@ -37,6 +40,14 @@
             <button type="submit" class="btn btn-primary" name="get-fields-button" value="get-fields">
                 Get Fields
             </button>
+        </div>
+
+
+        <div>
+            <select class="js-example-basic-single" name="state">
+              <option value="AL">Alabama</option>
+              <option value="WY">Wyoming</option>
+            </select>
         </div>
 
         <!-- Update DIV-->
@@ -81,6 +92,10 @@
             required: true,
             options: {{field_opts | safe}},
             selectedValue: {{selected_fields | safe}}
+        });
+
+        $(document).ready(function() {
+            $('.js-example-basic-single').select2();
         });
 
     </script>

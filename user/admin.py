@@ -1,6 +1,4 @@
 import io
-import json
-from http.client import HTTPResponse
 from collections import Counter
 import pandas as pd
 import numpy as np
@@ -9,24 +7,20 @@ import re
 
 from django.contrib import admin
 from django.contrib.auth.models import User
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.template.response import TemplateResponse
 from django.urls import path
 
-from dealership.models import Dealership, DealershipGroup
-from . import views
+from dealership.models import Dealership
 from .models import UserProfile
 
 import random
 import string
 
 
-# Register your models here.
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ["user", "dealership"]
-    # fields = ("user", "dealership")
-    # add_form_template = "test.html"
 
     class Meta:
         model = UserProfile
@@ -56,7 +50,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         text = request.POST.get("formTextArea")
 
         if text is None or len(text) == 0:
-            return TemplateResponse(request, "test.html", context)
+            return TemplateResponse(request, "user/add_userprofile.html", context)
 
         text = text.rstrip("\r\n")
         data = io.StringIO(text)
@@ -75,7 +69,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                        "show_table": 'false',
                        "is_valid": False,
                        "error": str(e)}
-            return render(request, "test.html", context)
+            return render(request, "user/add_userprofile.html", context)
 
         missing_spaces_rows = np.where(pd.isnull(user_profile_table))[0]
         missing_spaces_cols = np.where(pd.isnull(user_profile_table))[1]
@@ -180,7 +174,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                    "is_valid": is_valid,
                    "error": None}
 
-        return render(request, "test.html", context)
+        return render(request, "user/add_userprofile.html", context)
 
     def add_userprofile(self, request, obj=None, **kwargs):
         if request.method == "GET":
@@ -278,7 +272,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         try:
 
-            updatable_objects = Dealership.objects.filter(id__in=list(user_profile_table['dealership'][exist_dealership_ids]))
+            updatable_objects = Dealership.objects.filter(
+                id__in=list(user_profile_table['dealership'][exist_dealership_ids]))
             Util = Utils()
             exist_dealership_ids = Util.reorder_list(updatable_objects, user_profile_table, "Dealership")
             for dealership, dealership_index in zip(updatable_objects, exist_dealership_ids):
