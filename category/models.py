@@ -12,8 +12,10 @@ class Category(models.Model):
 
 
 class AssociatedCategory(models.Model):
-    dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE, verbose_name="Dealership")
-    category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name="Category")
+    dealership = models.ForeignKey(Dealership, on_delete=models.DO_NOTHING, verbose_name="Dealership",
+                                   related_name="ac_dealership")
+    category = models.ForeignKey(Category, on_delete=models.DO_NOTHING, verbose_name="Category",
+                                 related_name="ac_category")
 
     class Meta:
         unique_together = (('dealership',

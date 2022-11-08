@@ -12,8 +12,5 @@ class DealershipGroup(models.Model):
 
 
 class Dealership(models.Model):
-    group = models.ForeignKey(DealershipGroup, on_delete=models.CASCADE, verbose_name="Group")
+    group = models.ForeignKey(DealershipGroup, related_name='dealership_group', on_delete=models.DO_NOTHING, verbose_name="Dealership Group")
     name = models.CharField(max_length=50, verbose_name="Name")
-
-    def __str__(self):
-        return self.name

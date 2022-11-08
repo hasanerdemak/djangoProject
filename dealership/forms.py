@@ -1,6 +1,4 @@
 from django import forms
-from django.contrib.admin import widgets
-from django.contrib.admin.widgets import FilteredSelectMultiple
 
 from category.models import Category
 from dealership.models import Dealership
@@ -8,7 +6,8 @@ from dealership.models import Dealership
 
 class DealershipForm(forms.ModelForm):
     category = forms.ModelMultipleChoiceField(queryset=Category.objects.all(),
-                                              widget= forms.CheckboxSelectMultiple)
+                                              widget=forms.CheckboxSelectMultiple)
+
     class Meta:
         model = Dealership
         fields = '__all__'
