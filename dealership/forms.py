@@ -17,4 +17,4 @@ class DealershipForm(forms.ModelForm):
 
         for meta_field in list(self.fields):
             if meta_field not in show_fields:
-                del self.fields[meta_field]
+                del self.fields[meta_field]  # pop

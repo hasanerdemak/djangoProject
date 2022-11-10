@@ -8,18 +8,18 @@ class Category(models.Model):
     name = models.CharField(max_length=50, verbose_name="Category Name")
 
     def __str__(self):
-        return self.name
+        return f"{self.name}"
 
 
-class AssociatedCategory(models.Model): # related_name associated_categories
+class AssociatedCategory(models.Model):
     dealership = models.ForeignKey(Dealership, on_delete=models.DO_NOTHING, verbose_name="Dealership",
-                                   related_name="ac_dealership")
+                                   related_name="dealerships")
     category = models.ForeignKey(Category, on_delete=models.DO_NOTHING, verbose_name="Category",
-                                 related_name="ac_category")
+                                 related_name="categories")
 
     class Meta:
         unique_together = (('dealership',
                             'category'),)
 
     def __str__(self):
-        return self.dealership.name + " - " + self.category.name
+        return f"{self.dealership.name} - {self.category.name}"

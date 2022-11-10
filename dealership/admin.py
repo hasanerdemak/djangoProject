@@ -21,6 +21,17 @@ class DealershipAdmin(admin.ModelAdmin):
     class Meta:
         model = Dealership
 
+    """def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            url(
+                r'^(?P<customer_id>.+)/change/customer-update-credit-limit/$',
+                self.admin_site.admin_view(self.update_customer_credit_limit),
+                name='customer_history',
+            ),"""
+
+    # { % url'admin:check_buttons' %}
+
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
@@ -36,7 +47,8 @@ class DealershipAdmin(admin.ModelAdmin):
         for dg in dgs:
             print(dg.dealerships.all().values_list('id', 'name'))
         """
-        dealerships2 = AssociatedCategory.objects.select_related('dealership', 'category', 'dealership__group').all()
+        # dealerships2 = AssociatedCategory.objects.select_related('dealership', 'category', 'dealership__group').all()
+
         get_field_button = request.POST.get("get-fields-button")
         update_button = request.POST.get("update-button")
         form = None
@@ -45,10 +57,10 @@ class DealershipAdmin(admin.ModelAdmin):
 
         if get_field_button is None and update_button is None:  # Page first open
             dealership_opts, field_opts = self.get_select_lists_opts()
-            fields_taken = False
+            are_fields_taken = False
         elif update_button is None:  # Get Fields button is clicked.
             dealership_opts, field_opts = self.get_select_lists_opts()
-            fields_taken = True
+            are_fields_taken = True
             # Create form after selecting dealerships and fields
             form = self.create_form(request)
             selected_dealerships_list = request.POST.get("dealerships").split(',')
@@ -61,7 +73,7 @@ class DealershipAdmin(admin.ModelAdmin):
                    "form": form,
                    "selected_dealerships": selected_dealerships_list,
                    "selected_fields": selected_fields_list,
-                   "fields_taken": fields_taken
+                   "are_fields_taken": are_fields_taken
                    }
 
         return TemplateResponse(request, "dealership/dealership_edit.html", context)
@@ -84,7 +96,6 @@ class DealershipAdmin(admin.ModelAdmin):
             dealership_opts.sort(key=self.get_group_name)"""
 
         dealership_opts = []
-        field_opts = []
         dealership_groups = DealershipGroup.objects.prefetch_related('dealerships').all()
         for dealership_group in dealership_groups:
             dealerships = dealership_group.dealerships.all()
@@ -108,7 +119,7 @@ class DealershipAdmin(admin.ModelAdmin):
         field_opts = [{"label": field.verbose_name, "value": field.name} for field in
                       Dealership._meta.fields]
         field_opts.append({"label": 'Category', "value": 'category'})
-        del field_opts[0]
+        field_opts.pop(0)
 
         return dealership_opts, field_opts
 
@@ -137,9 +148,9 @@ class DealershipAdmin(admin.ModelAdmin):
                         AssociatedCategory.objects.filter(dealership_id__in=dealerships_ids_list).delete()
                         selected_categories = request.POST.getlist('category')
                         for dealership_id in dealerships_ids_list:
-                            for category in selected_categories:
+                            for category_id in selected_categories:
                                 associated_category_list.append(
-                                    AssociatedCategory(dealership_id=dealership_id, category_id=int(category)))
+                                    AssociatedCategory(dealership_id=dealership_id, category_id=int(category_id)))
                         AssociatedCategory.objects.bulk_create(associated_category_list)
                     else:
                         dealerships.update(**{selected_field: request.POST.get(selected_field)})
