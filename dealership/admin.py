@@ -15,7 +15,7 @@ class AssociatedCategoryInline(admin.StackedInline):
 
 
 class DealershipAdmin(admin.ModelAdmin):
-    change_list_template = "dealership/my_change_list.html"
+    change_list_template = "dealership/my_dealership_change_list.html"
     inlines = [AssociatedCategoryInline]
 
     class Meta:
@@ -30,6 +30,13 @@ class DealershipAdmin(admin.ModelAdmin):
         return my_urls + urls
 
     def check_buttons(self, request, obj=None, **kwargs):
+        """dgs = DealershipGroup.objects.prefetch_related('dealerships').all()
+        ds = Dealership.objects.select_related('group').all()
+        dealerships_list = [dealership for dg in dgs for dealership in list(dg.dealerships.all())]
+        for dg in dgs:
+            print(dg.dealerships.all().values_list('id', 'name'))
+        """
+        dealerships2 = AssociatedCategory.objects.select_related('dealership', 'category', 'dealership__group').all()
         get_field_button = request.POST.get("get-fields-button")
         update_button = request.POST.get("update-button")
         form = None
@@ -60,11 +67,10 @@ class DealershipAdmin(admin.ModelAdmin):
         return TemplateResponse(request, "dealership/dealership_edit.html", context)
 
     def get_select_lists_opts(self):
-        dealerships = Dealership.objects.select_related("group").all()
-        dealerships2 = AssociatedCategory.objects.select_related('dealership', 'category', 'dealership__group').all()
+        # dealerships = Dealership.objects.select_related("group").all()
+        # dealerships2 = AssociatedCategory.objects.select_related('dealership', 'category', 'dealership__group').all()
 
-        dealership_opts = []
-        for dealership in dealerships:  # !!!!!!!!!!!! select2
+        """for dealership in dealerships:  # !!!!!!!!!!!! select2
             does_group_find = False
             dealership_dict = {"label": dealership.name, "value": dealership.id}
             for dealership_opt in dealership_opts:
@@ -75,7 +81,18 @@ class DealershipAdmin(admin.ModelAdmin):
                 dealership_group_dict = {"label": dealership.group.name, "options": [dealership_dict]}
                 dealership_opts.append(dealership_group_dict)
 
-        dealership_opts.sort(key=self.get_group_name)
+            dealership_opts.sort(key=self.get_group_name)"""
+
+        dealership_opts = []
+        field_opts = []
+        dealership_groups = DealershipGroup.objects.prefetch_related('dealerships').all()
+        for dealership_group in dealership_groups:
+            dealerships = dealership_group.dealerships.all()
+            if dealerships:
+                dealership_group_dict = {"label": dealership_group.name,
+                                         "options": [{"label": name, "value": d_id} for d_id, name in
+                                                     dealerships.values_list('id', 'name')]}
+                dealership_opts.append(dealership_group_dict)
 
         # select2
 
@@ -83,12 +100,15 @@ class DealershipAdmin(admin.ModelAdmin):
             {'label': 'DG 2', 'options': [{'label': 'Toyota 1', 'value': 2}]}, 
             {'label': 'DG 3', 'options': [{'label': 'Ford 1', 'value': 1}, {'label': 'Tesla 1', 'value': 3}, {'label': 'Hyundai 1', 'value': 4}]}]"""
 
-        field_opts = []
-        for index, field in enumerate(Dealership._meta.fields):
+        """for index, field in enumerate(Dealership._meta.fields):
             if index != 0:
                 field_dict = {"label": field.verbose_name, "value": field.name}
-                field_opts.append(field_dict)
+                field_opts.append(field_dict)"""
+
+        field_opts = [{"label": field.verbose_name, "value": field.name} for field in
+                      Dealership._meta.fields]
         field_opts.append({"label": 'Category', "value": 'category'})
+        del field_opts[0]
 
         return dealership_opts, field_opts
 
@@ -107,14 +127,12 @@ class DealershipAdmin(admin.ModelAdmin):
         else:  # POST
             selected_fields_list = request.POST.get("fields").split(',')
             selected_dealerships_list = request.POST.get("dealerships").split(',')
-            print(selected_dealerships_list)
-            print(selected_fields_list)
-            associated_category_list = []
 
             try:
                 dealerships = Dealership.objects.filter(id__in=selected_dealerships_list)
                 for selected_field in selected_fields_list:
                     if selected_field == "category":
+                        associated_category_list = []
                         dealerships_ids_list = list(dealerships.values_list("id", flat=True))
                         AssociatedCategory.objects.filter(dealership_id__in=dealerships_ids_list).delete()
                         selected_categories = request.POST.getlist('category')
@@ -126,7 +144,7 @@ class DealershipAdmin(admin.ModelAdmin):
                     else:
                         dealerships.update(**{selected_field: request.POST.get(selected_field)})
             except Exception as e:
-                print(f"Exception Happened for {associated_category_list} | {e}")
+                print(e)
 
             return HttpResponseRedirect("../dealership")
 

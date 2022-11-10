@@ -11,7 +11,7 @@ class Category(models.Model):
         return self.name
 
 
-class AssociatedCategory(models.Model):
+class AssociatedCategory(models.Model): # related_name associated_categories
     dealership = models.ForeignKey(Dealership, on_delete=models.DO_NOTHING, verbose_name="Dealership",
                                    related_name="ac_dealership")
     category = models.ForeignKey(Category, on_delete=models.DO_NOTHING, verbose_name="Category",

@@ -139,20 +139,20 @@
 {% endblock %}
 
     <!-- CSV UPLOAD -->
-    <input type="file" id="fileUpload" oninput="enableUploadButton()"/>
-    <button type="button" class="btn btn-primary" id="upload" value="Upload" onclick="read(document.getElementById('fileUpload'))" disabled>
+    <input type="file" id="file-upload" oninput="enableUploadButton()"/>
+    <button type="button" class="btn btn-primary" id="upload" value="upload" onclick="read(document.getElementById('file-upload'))" disabled>
         Upload
     </button>
     <hr />
 
 
-    <form action="addUserProfile/" method="POST">
+    <form action="" method="POST">
         {% csrf_token %}
 
         <!-- Message input -->
         <div class="row d-flex justify-content-center" >
             <div class="custom-textarea">
-                <textarea class="textarea" spellcheck="false" id="formTextArea" name="formTextArea" required {% if is_valid %}readonly{% endif %}>{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
+                <textarea class="textarea" spellcheck="false" id="form-text-area" name="form-text-area" required {% if is_valid %}readonly{% endif %}>{% if text %}{{ text }}{% endif %}</textarea> <!--class="form-control"-->
                 <div class="linenumbers"></div>
             </div>
         </div>
@@ -160,8 +160,8 @@
         <!-- Checkbox -->
         <div class="row">
             <div class="form-check col-12 d-flex justify-content-center mb-4">
-                <input class="form-check-input me-2" type="checkbox" value="" name="formCheckBox" id="formCheckBox" checked />
-                <label class="form-check-label" for="formCheckBox">
+                <input class="form-check-input me-2" type="checkbox" value="" name="form-check-box" id="form-check-box" checked />
+                <label class="form-check-label" for="form-check-box">
                     Create models if not exist
                 </label>
             </div>
@@ -170,14 +170,14 @@
         <!-- BUTTONS DIV-->
         <div class="row d-flex justify-content-center form-check ">
             <div class="col-6 d-flex justify-content-center">
-                <button type="submit" class="btn btn-primary" formaction="" name="typeCheckButton" value="check">
-                    TypeCheck
+                <button type="submit" class="btn btn-primary" name="error-check-button" value="check">
+                    Error Check
                 </button>
             </div>
 
             <div class="col-6 d-flex justify-content-center">
-                <button type="submit" class="btn btn-primary" name="createButton" value="create" {% if is_valid %} {% else %} disabled {% endif %}>
-                    Create UserProfile
+                <button type="submit" class="btn btn-primary" name="create-button" value="create" {% if is_valid %} {% else %} disabled {% endif %}>
+                    Create User Profile
                 </button>
             </div>
         </div>
@@ -216,7 +216,7 @@
 
         </div>
         <!-- TABLE DIV -->
-        <div id="divTable">
+        <div id="div-table">
 
         </div>
     </div>
@@ -231,7 +231,7 @@
         }
 
         reader.onload = function (e) {
-            document.getElementById('formTextArea').value = e.target.result;
+            document.getElementById('form-text-area').value = e.target.result;
         }
 
         function enableUploadButton(){
@@ -298,14 +298,14 @@
 
         textarea.addEventListener('keyup', event => {
             //myFunction();
-            inputText = document.getElementById("formTextArea").value;
+            inputText = document.getElementById("form-text-area").value;
             if (inputText == null || inputText === '') {
                     alert('empty or contains a new line');
             }
         })*/
 
         function paintWrongSpaces(){
-            var table = document.getElementById('userProfileTable');
+            var table = document.getElementById('user-profile-table');
 
             var missingSpacesRows = {{ missing_spaces_rows }};
             var missingSpacesCols = {{ missing_spaces_cols }};
@@ -340,8 +340,8 @@
         }
 
         function myFunction() {
-          var tbl = "<table class='table table-sm table-responsive table-bordered table-striped table-editable' id='userProfileTable'>";
-          var lines = document.getElementById("formTextArea").value.split("\n");
+          var tbl = "<table class='table table-sm table-responsive table-bordered table-striped table-editable' id='user-profile-table'>";
+          var lines = document.getElementById("form-text-area").value.split("\n");
 
           tbl = tbl + "<thead><tr>";
           tbl = tbl + "<td>" + "#" + "</td>";
@@ -366,7 +366,7 @@
               tbl = tbl + "</tr>";
           }
           tbl = tbl + "</tbody></table>";
-          var divTable = document.getElementById('divTable');
+          var divTable = document.getElementById('div-table');
           divTable.innerHTML = tbl;
 
         }

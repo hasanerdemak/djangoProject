@@ -20,6 +20,7 @@ import string
 
 
 class UserProfileAdmin(admin.ModelAdmin):
+    change_list_template = "user/my_userprofile_change_list.html"
     list_display = ["user", "dealership"]
 
     class Meta:
@@ -28,12 +29,12 @@ class UserProfileAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            path('add/', self.check_input),
-            path('add/addUserProfile/', self.add_userprofile),
+            path('addUserProfile/', self.check_buttons),
+            # path('add/addUserProfile/', self.add_userprofile),
         ]
         return my_urls + urls
 
-    def check_input(self, request, obj=None, **kwargs):
+    def check_buttons(self, request, obj=None, **kwargs):
         context = {"text": None,
                    "missing_spaces_rows": None,
                    "missing_spaces_cols": None,
@@ -47,10 +48,18 @@ class UserProfileAdmin(admin.ModelAdmin):
                    "is_valid": False,
                    "error": None}
 
-        text = request.POST.get("formTextArea")
+        error_check_button = request.POST.get("error-check-button")
+        create_button = request.POST.get("create-button")
 
-        if text is None or len(text) == 0:
+        if error_check_button is None and create_button is None:  # Page first open
             return TemplateResponse(request, "user/add_userprofile.html", context)
+        elif create_button is None:  # Error Check button was clicked.
+            return self.error_check(request)
+        else:  # Create User Profile button was clicked.
+            return self.add_userprofile(request)
+
+    def error_check(self, request):
+        text = request.POST.get("form-text-area")
 
         text = text.rstrip("\r\n")
         data = io.StringIO(text)
@@ -71,11 +80,8 @@ class UserProfileAdmin(admin.ModelAdmin):
                        "error": str(e)}
             return render(request, "user/add_userprofile.html", context)
 
-        missing_spaces_rows = np.where(pd.isnull(user_profile_table))[0]
-        missing_spaces_cols = np.where(pd.isnull(user_profile_table))[1]
-
-        missing_spaces_rows = missing_spaces_rows.tolist()
-        missing_spaces_cols = missing_spaces_cols.tolist()
+        missing_spaces_rows = np.where(pd.isnull(user_profile_table))[0].tolist()
+        missing_spaces_cols = np.where(pd.isnull(user_profile_table))[1].tolist()
 
         missing_spaces_messages = ''
         if len(missing_spaces_cols) != 0:
@@ -176,16 +182,16 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         return render(request, "user/add_userprofile.html", context)
 
-    def add_userprofile(self, request, obj=None, **kwargs):
+    def add_userprofile(self, request):
         if request.method == "GET":
             return HttpResponseRedirect("../../")
         else:  # POST
 
-            text = request.POST.get("formTextArea")
+            text = request.POST.get("form-text-area")
             data = io.StringIO(text)
             user_profile_table = pd.read_csv(data, sep=",")
 
-            create_if_not_exist = True if (request.POST.get("formCheckBox") is not None) else False
+            create_if_not_exist = True if (request.POST.get("form-check-box") is not None) else False
 
             characters = string.ascii_letters + string.digits + string.punctuation
 
@@ -290,19 +296,8 @@ class UserProfileAdmin(admin.ModelAdmin):
             for index, row in user_profile_table.iterrows():
                 if row['id'] in list(user_profile_table['id'][nonexist_userprofile_ids]):
                     userprofile_list_forcreate.append(UserProfile(id=row['id'],
-                                                                  user=User(id=row['user'],
-                                                                            is_active=row["isActive"],
-                                                                            email=row["email"],
-                                                                            password=''.join(
-                                                                                random.choice(characters) for i in
-                                                                                range(8)),
-                                                                            username=row["firstName"] + row["lastName"]
-                                                                            ),
-                                                                  dealership=Dealership(id=row["dealership"],
-                                                                                        name="D " + str(
-                                                                                            random.randint(3, 1000)),
-                                                                                        group_id=1
-                                                                                        ),
+                                                                  user_id=row["user"],
+                                                                  dealership_id=row["dealership"],
                                                                   dealership_name=row['dealershipName'],
                                                                   is_active=True,
                                                                   first_name=row['firstName'],
@@ -401,8 +396,13 @@ class Utils:
     def indexes_of_non_boolean_values(self, value_list):
         output = []
         for index, value in enumerate(value_list):
-            if not isinstance(value, bool) and not self.isNaN(value):
-                output.append(index)
+            # if not isinstance(value, bool) and not self.isNaN(value):
+            try:
+                if int(value) != 0 and int(value) != 1:
+                    output.append(index)
+            except ValueError:
+                if not self.isNaN(value):
+                    output.append(index)
 
         return output
 
