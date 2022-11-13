@@ -5,8 +5,7 @@ from dealership.models import Dealership
 
 
 class DealershipForm(forms.ModelForm):
-    category = forms.ModelMultipleChoiceField(queryset=Category.objects.all(),
-                                              widget=forms.CheckboxSelectMultiple)
+    category = forms.ModelMultipleChoiceField(queryset=Category.objects.all())
 
     class Meta:
         model = Dealership
@@ -17,4 +16,4 @@ class DealershipForm(forms.ModelForm):
 
         for meta_field in list(self.fields):
             if meta_field not in show_fields:
-                del self.fields[meta_field]  # pop
+                self.fields.pop(meta_field)

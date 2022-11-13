@@ -13,13 +13,14 @@
       font-size: 12px;
       margin: 4px 2px;
       cursor: pointer;
+      border-radius: 4px;
     }
     </style>
 
     <div>
-        <form action="updateDealerships" method="POST">
+        <form action="{% url 'admin:updateDealerships' %}" method="POST">
             {% csrf_token %}
-                <button type="submit" style="border-radius: 4px">Select & Update</button>
+                <button type="submit">Select & Update</button>
         </form>
     </div>
     <br />

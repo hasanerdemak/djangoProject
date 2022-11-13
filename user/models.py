@@ -1,15 +1,12 @@
-import sys
-
 from django.db import models
 from django.contrib.auth.models import User
-
-sys.path.append('/Users/hasanerdemak/PycharmProjects/djangoProject')
 from dealership.models import Dealership
 
 
 class UserProfile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.DO_NOTHING, verbose_name="User", related_name="user_profiles")
+    dealership = models.ForeignKey(Dealership, on_delete=models.DO_NOTHING, verbose_name="Dealership",
+                                   related_name="user_profiles")
     dealership_name = models.CharField(max_length=50, verbose_name="Dealership Name", null=False, blank=False)
     is_active = models.BooleanField(verbose_name="Is Active")
     first_name = models.CharField(max_length=50, verbose_name="First Name", null=False, blank=False)
@@ -20,4 +17,4 @@ class UserProfile(models.Model):
         unique_together = (('user', 'dealership'),)
 
     def __str__(self):
-        return self.user.username + " - " + self.dealership.name
+        return f"{self.user.username} - {self.dealership.name}"
