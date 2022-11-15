@@ -111,39 +111,20 @@ class UserProfileAdmin(admin.ModelAdmin):
                                   "name": [models.CharField],
                                   "email": [models.EmailField]}
 
-        unique_cols = ["id", ["user_id", "dealership_id"]]
-
-        int_cols = []
-        bool_cols = []
-        name_cols = []
-        email_cols = []
-
-        for col in user_profile_table.columns:
-            col_type = type(UserProfile._meta.get_field(col))
-            if col_type in model_field_types_dict["int"]:
-                int_cols.append(col)
-            elif col_type in model_field_types_dict["bool"]:
-                bool_cols.append(col)
-            elif col_type in model_field_types_dict["name"]:
-                name_cols.append(col)
-            elif col_type in model_field_types_dict["email"]:
-                email_cols.append(col)
-        name_cols.pop(name_cols.index("dealership_name"))
-
+        Util = Utils()
         non_valid_spaces_rows = []
         non_valid_spaces_cols = []
-
-        Util = Utils()
         non_valid_messages = ''
         for col in user_profile_table.columns:
             index_list = []
-            if col in int_cols:
+            col_type = type(UserProfile._meta.get_field(col))
+            if col_type in model_field_types_dict["int"]:
                 index_list = Util.indexes_of_non_int_values(user_profile_table[col].tolist())
-            elif col in bool_cols:
+            elif col_type in model_field_types_dict["bool"]:
                 index_list = Util.indexes_of_non_boolean_values(user_profile_table[col].tolist())
-            elif col in name_cols:
+            elif col_type in model_field_types_dict["name"] and col != "dealership_name":
                 index_list = Util.indexes_of_non_valid_names(user_profile_table[col].tolist())
-            elif col in email_cols:
+            elif col_type in model_field_types_dict["email"]:
                 index_list = Util.indexes_of_non_valid_emails(user_profile_table[col].tolist())
 
             i = user_profile_table.columns.get_loc(col)
@@ -154,6 +135,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                 non_valid_messages += '"' + user_profile_table[col].name + '" fields at row(s): ' + str(
                     Util.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
 
+        unique_cols = ["id", ["user_id", "dealership_id"]]
         non_unique_rows = []
         non_unique_cols = []
         non_unique_messages = ''
