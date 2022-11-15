@@ -27,7 +27,8 @@ def indices_of_non_int_values(value_list):
 def indices_of_non_valid_emails(value_list):
     output = []
     if len(value_list):
-        for index, email in enumerate(value_list):
+        for email in value_list:
+            index = value_list.index(email)
             with contextlib.suppress(TypeError):
                 if not re.fullmatch(REGEX_VALID_EMAIL, email):
                     output.append(index)
@@ -36,7 +37,8 @@ def indices_of_non_valid_emails(value_list):
 
 def indices_of_non_boolean_values(value_list):
     output = []
-    for index, value in enumerate(value_list):
+    for value in value_list:
+        index = value_list.index(value)
         try:
             if int(value) != 0 and int(value) != 1:
                 output.append(index)
@@ -49,7 +51,8 @@ def indices_of_non_boolean_values(value_list):
 
 def indices_of_non_valid_names(value_list):
     output = []
-    for index, value in enumerate(value_list):
+    for value in value_list:
+        index = value_list.index(value)
         if not str(value).replace(" ", "").isalpha():
             output.append(index)
 
@@ -64,7 +67,8 @@ def indices_of_non_unique_cells(value_df):
         value_list = list(value_df.itertuples(index=False, name=None))
 
     freq = Counter(value_list)
-    for index, value in enumerate(value_list):
+    for value in value_list:
+        index = value_list.index(value)
         if freq[value] > 1:
             output.append(index)
 

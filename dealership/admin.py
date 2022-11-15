@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from django.template.response import TemplateResponse
 from django.urls import re_path
@@ -61,7 +60,6 @@ class DealershipAdmin(admin.ModelAdmin):
     def update_dealerships(request):
         if request.method == "GET":
             return redirect("/admin/dealership/dealership")
-            # return HttpResponseRedirect("../../")
         else:  # POST
             selected_fields_list = request.POST.get("select-field").split(',')
             selected_dealerships_list = request.POST.get("select-dealership").split(',')
@@ -84,7 +82,6 @@ class DealershipAdmin(admin.ModelAdmin):
             except Exception as e:
                 print(e)
 
-            # return HttpResponseRedirect("../dealership")
             return redirect("/admin/dealership/dealership")
 
 

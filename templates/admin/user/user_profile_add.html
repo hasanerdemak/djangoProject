@@ -1,0 +1,384 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+
+    {% block css_files %}
+        <style>
+
+            @import url('https://fonts.googleapis.com/css?family=Ubuntu+Mono');
+
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+
+            ::-moz-selection {
+                background: #ff733c;
+                color: #FFFFFF;
+            }
+
+            ::selection {
+                background: #ff733c;
+                color: #FFFFFF;
+            }
+
+            body {
+                overflow-x: hidden;
+                background: #E4E6C3;
+            }
+
+            .custom-textarea {
+                position: relative;
+                width: 800px;
+                max-width: 90%;
+                margin: 20px auto;
+                border-radius: 5px;
+                box-shadow: 0 0 16px rgba(34, 39, 37, 0.3);
+                overflow: hidden;
+            }
+
+            .custom-textarea::after {
+                content: '';
+                display: block;
+                position: absolute;
+                top: 0;
+                left: 42px;
+                width: 16px;
+                height: 100%;
+                background: #FFFFFF;
+                pointer-events: none;
+                z-index: 1;
+            }
+
+            .custom-textarea > .textarea {
+                display: block;
+                position: relative;
+                z-index: 1;
+                width: calc(95%);
+                height: 150px;
+                min-height: 150px;
+                max-height: 90vh;
+                margin-left: 58px;
+                padding: 0px;
+                font-size: 16px;
+                line-height: 24px;
+                font-family: 'Ubuntu Mono', monospace;
+                outline: none;
+                border: none;
+                border-radius: 0 5px 5px 0;
+                resize: vertical;
+                white-space: pre;
+                overflow: auto;
+                word-wrap: normal;
+                color: #121113;
+                background: #FFFFFF;
+            }
+
+            .custom-textarea > .textarea::-webkit-scrollbar-track {
+                border-radius: 0;
+                background-color: #ffffff;
+            }
+
+            .custom-textarea > .textarea::-webkit-scrollbar {
+                width: 12px;
+                background-color: #FFFFFF;
+            }
+
+            .custom-textarea > .textarea::-webkit-scrollbar-thumb {
+                border-radius: 0;
+                background-color: #ff733c;
+            }
+
+            .custom-textarea > .linenumbers {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 42px;
+                background: #ff733c;
+            }
+
+            .custom-textarea > .linenumbers > .number {
+                font-family: 'Ubuntu Mono', monospace;
+                font-size: 16px;
+                line-height: 24px;
+                padding-left: 6px;
+                color: #222725;
+            }
+
+            .textarea[readonly] {
+                background-color: rgba(0, 0, 0, 0.1);
+            }
+
+            form {
+                max-height: 500px;
+                max-lines: 20;
+            }
+
+            span {
+                margin: 5px;
+            }
+
+            .hovertext {
+                position: relative;
+                border-bottom: 1px dotted #555;
+            }
+
+            .hovertext:before {
+                content: attr(data-hover);
+                visibility: hidden;
+                opacity: 0;
+                width: 200px;
+                background-color: #555;
+                color: #fff;
+                text-align: center;
+                border-radius: 5px;
+                padding: 5px;
+                transition: opacity 0.5s ease-in-out;
+
+                position: absolute;
+                z-index: 1;
+                left: 0;
+                top: 110%;
+            }
+
+            .hovertext:hover:before {
+                opacity: 1;
+                visibility: visible;
+            }
+
+        </style>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+              integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+              crossorigin="anonymous">
+    {% endblock %}
+
+    <!-- CSV UPLOAD -->
+    <input type="file" id="file-upload" oninput="enableUploadButton()"/>
+    <button type="button" class="btn btn-primary" id="upload" value="upload"
+            onclick="read(document.getElementById('file-upload'))" disabled>
+        Upload
+    </button>
+    <hr/>
+
+
+    <form action="" method="POST">
+        {% csrf_token %}
+
+        <!-- Message input -->
+        <div class="row d-flex justify-content-center">
+            <div class="custom-textarea">
+                <textarea class="textarea" spellcheck="false" id="form-text-area" name="form-text-area" required
+                          {% if is_valid %}readonly{% endif %}>{% if text %}{{ text }}{% endif %}</textarea>
+                <!--class="form-control"-->
+                <div class="linenumbers"></div>
+            </div>
+        </div>
+
+        <!-- Checkbox -->
+        <div class="row">
+            <div class="form-check col-12 d-flex justify-content-center mb-4">
+                <input class="form-check-input me-2" type="checkbox" value="" name="form-check-box" id="form-check-box"
+                       {% if create_if_not_exist %} checked {% endif %}/>
+                <label class="form-check-label" for="form-check-box">
+                    Create models if not exist
+                </label>
+            </div>
+        </div>
+
+        <!-- BUTTONS DIV-->
+        <div class="row d-flex justify-content-center form-check ">
+            <div class="col-6 d-flex justify-content-center">
+                <button type="submit" class="btn btn-primary" name="error-check-button" value="check">
+                    Error Check
+                </button>
+            </div>
+
+            <div class="col-6 d-flex justify-content-center">
+                <button type="submit" class="btn btn-primary" name="create-button" value="create"
+                        {% if is_valid %} {% else %} disabled {% endif %}>
+                    Create User Profile
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <div style="margin-top: 10px">
+        <p style="color: #ff0000; text-indent: 30px; text-transform: uppercase;">
+            {% if error %}{{ error }}{% endif %}</p> <!--class="form-control"-->
+        <!--Error Colors-->
+        <div>
+            {% if missing_spaces_rows %}
+                <span class="hovertext" data-hover="{{ missing_spaces_messages }}">
+                    <svg id="first-rect-svg" width="15" height="15">
+                        <rect style="fill:#ff5454;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                    </svg>
+                    <label for="first-rect-svg">Missing Cells</label>
+                </span>
+            {% endif %}
+
+            {% if non_valid_spaces_rows %}
+                <span class="hovertext" data-hover="{{ non_valid_messages }}">
+                    <svg id="second-rect-svg" width="15" height="15">
+                        <rect style="fill:#ffcc00;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                    </svg>
+                    <label for="second-rect-svg">Non-Valid Cells</label>
+                </span>
+            {% endif %}
+
+            {% if non_unique_rows %}
+                <span class="hovertext" data-hover="{{ non_unique_messages }}">
+                    <svg id="third-rect-svg" width="15" height="15">
+                        <rect style="fill:#0095ff;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                    </svg>
+                    <label for="third-rect-svg">Non-Unique Rows</label>
+                </span>
+            {% endif %}
+
+        </div>
+        <!-- TABLE DIV -->
+        <div id="div-table">
+
+        </div>
+    </div>
+
+    <!-- CSV UPLOAD SCRIPT -->
+    <script type="text/javascript">
+        const reader = new FileReader()
+
+        function read(input) {
+            const csv = input.files[0]
+            reader.readAsText(csv)
+        }
+
+        reader.onload = function (e) {
+            document.getElementById('form-text-area').value = e.target.result;
+        }
+
+        function enableUploadButton() {
+            document.getElementById('upload').disabled = false;
+        }
+    </script>
+
+    <!-- LINE NUMBER SCRIPT -->
+    <script>
+        class CustomTextarea {
+            constructor(element) {
+                this.element = element;
+                this.textarea = this.element.querySelector('.textarea');
+                this.numbers = this.element.querySelector('.linenumbers');
+
+                this.numberOfNumbers = 0;
+
+                this.addMoreNumbers();
+                this.initEventListeners();
+            }
+
+            addMoreNumbers() {
+                let html = '';
+
+                for (let i = this.numberOfNumbers; i < this.numberOfNumbers + 100; i++) {
+                    html += `<div class='number'>${i}</div>`;
+                }
+
+                this.numberOfNumbers += 100;
+                this.numbers.innerHTML += html;
+            }
+
+            initEventListeners() {
+                this.textarea.addEventListener('scroll', () => {
+                    this.numbers.style.transform = `translateY(-${this.textarea.scrollTop}px)`;
+
+                    if (Math.abs(
+                        this.numbers.offsetHeight
+                        - this.textarea.offsetHeight
+                        - this.textarea.scrollTop) < 100) {
+                        this.addMoreNumbers();
+                    }
+                });
+            }
+        }
+
+        const textarea = new CustomTextarea(document.querySelector('.custom-textarea'));
+    </script>
+
+    <!-- TABLE SCRIPT -->
+    <script>
+        window.onload = function () {
+            try {
+                if (Boolean({{ show_table }})) {
+                    myFunction();
+                    paintWrongSpaces();
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function paintWrongSpaces() {
+            var table = document.getElementById('user-profile-table');
+
+            var missingSpacesRows = {{ missing_spaces_rows }};
+            var missingSpacesCols = {{ missing_spaces_cols }};
+            if (missingSpacesRows === 'None' || missingSpacesCols === 'None') {
+                return;
+            }
+
+            for (let i = 0; i < missingSpacesCols.length; i++) {
+                table.rows[missingSpacesRows[i] + 1].cells[missingSpacesCols[i] + 1].style.backgroundColor = '#ff5454';
+            }
+
+            var nonUniqueRows = {{ non_unique_rows }};
+            var nonUniqueCols = {{ non_unique_cols }};
+            if (nonUniqueRows === 'None' || nonUniqueCols === 'None') {
+                return;
+            }
+
+            for (let i = 0; i < nonUniqueCols.length; i++) {
+                table.rows[nonUniqueRows[i] + 1].cells[nonUniqueCols[i] + 1].style.backgroundColor = '#0095ff';
+            }
+
+            var nonValidSpacesRows = {{ non_valid_spaces_rows }};
+            var nonValidSpacesCols = {{ non_valid_spaces_cols }};
+            if (nonValidSpacesRows === 'None' || nonValidSpacesCols === 'None') {
+                return;
+            }
+
+            for (let i = 0; i < nonValidSpacesCols.length; i++) {
+                table.rows[nonValidSpacesRows[i] + 1].cells[nonValidSpacesCols[i] + 1].style.backgroundColor = '#ffcc00';
+            }
+
+        }
+
+        function myFunction() {
+            var tbl = "<table class='table table-sm table-responsive table-bordered table-striped table-editable' id='user-profile-table'>";
+            var lines = document.getElementById("form-text-area").value.split("\n");
+
+            tbl = tbl + "<thead><tr>";
+            tbl = tbl + "<td>" + "#" + "</td>";
+            var headers = lines[0].split(",");
+            for (var j = 0; j < headers.length; j++) {
+                tbl = tbl + "<td>" + headers[j] + "</td>";
+            }
+            tbl = tbl + "</tr></thead>";
+
+            tbl = tbl + "<tbody>"
+            for (var i = 1; i < lines.length; i++) {
+                tbl = tbl + "<tr>" + "<th scope=" + '"row">' + i + "</th>"
+
+                var items = lines[i].split(",");
+                for (var j = 0; j < headers.length; j++) {
+                    if (items.length > j) {
+                        tbl = tbl + "<td>" + items[j] + "</td>";
+                    } else {
+                        tbl = tbl + "<td></td>";
+                    }
+                }
+                tbl = tbl + "</tr>";
+            }
+            tbl = tbl + "</tbody></table>";
+            var divTable = document.getElementById('div-table');
+            divTable.innerHTML = tbl;
+
+        }
+    </script>
+{% endblock %}

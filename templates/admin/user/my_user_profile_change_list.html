@@ -13,13 +13,14 @@
       font-size: 12px;
       margin: 4px 2px;
       cursor: pointer;
+      border-radius: 4px
     }
     </style>
 
     <div>
-        <form action="addUserProfile" method="POST">
+        <form action="{% url 'admin:addUserProfile' %}" method="POST">
             {% csrf_token %}
-                <button type="submit" style="border-radius: 4px">Add User Profile From Csv</button>
+                <button type="submit">Add User Profile From Csv</button>
         </form>
     </div>
     <br />
