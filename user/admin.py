@@ -1,6 +1,7 @@
 import contextlib
 import io
 from collections import Counter
+
 import pandas as pd
 import numpy as np
 
@@ -8,6 +9,7 @@ import re
 
 from django.contrib import admin
 from django.contrib.auth.models import User
+from django.db import models
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.template.response import TemplateResponse
@@ -100,32 +102,29 @@ class UserProfileAdmin(admin.ModelAdmin):
                 missing_spaces_messages = missing_spaces_messages[:len(missing_spaces_messages) - 2]
                 missing_spaces_messages += ' is/are required. \r\n'
 
-        """unique_cols = [0, [1, 2]]
-        int_cols = [0, 1, 2]
-        bool_cols = [4]
-        name_cols = [5, 6]
-        email_cols = [7]"""
-        unique_cols = ["id", ["user", "dealership"]]
-
-        int_cols = ["id", "user", "dealership"]
-        bool_cols = ["isActive"]
-        name_cols = ["firstName", "lastName"]
-        email_cols = ["email"]
-
-        non_valid_spaces_rows = []
-        non_valid_spaces_cols = []
+        model_field_types_dict = {"int": [models.AutoField, models.BigAutoField,
+                                          models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
+                                          models.PositiveIntegerField, models.PositiveBigIntegerField,
+                                          models.PositiveSmallIntegerField,
+                                          models.ForeignKey],
+                                  "bool": [models.BooleanField, models.NullBooleanField],
+                                  "name": [models.CharField],
+                                  "email": [models.EmailField]}
 
         Util = Utils()
+        non_valid_spaces_rows = []
+        non_valid_spaces_cols = []
         non_valid_messages = ''
         for col in user_profile_table.columns:
             index_list = []
-            if col in int_cols:
+            col_type = type(UserProfile._meta.get_field(col))
+            if col_type in model_field_types_dict["int"]:
                 index_list = Util.indexes_of_non_int_values(user_profile_table[col].tolist())
-            if col in bool_cols:
+            elif col_type in model_field_types_dict["bool"]:
                 index_list = Util.indexes_of_non_boolean_values(user_profile_table[col].tolist())
-            if col in name_cols:
+            elif col_type in model_field_types_dict["name"] and col != "dealership_name":
                 index_list = Util.indexes_of_non_valid_names(user_profile_table[col].tolist())
-            if col in email_cols:
+            elif col_type in model_field_types_dict["email"]:
                 index_list = Util.indexes_of_non_valid_emails(user_profile_table[col].tolist())
 
             i = user_profile_table.columns.get_loc(col)
@@ -136,6 +135,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                 non_valid_messages += '"' + user_profile_table[col].name + '" fields at row(s): ' + str(
                     Util.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
 
+        unique_cols = ["id", ["user_id", "dealership_id"]]
         non_unique_rows = []
         non_unique_cols = []
         non_unique_messages = ''
@@ -166,7 +166,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         show_table = 'true'
         is_valid = False
 
-        if not(len(non_valid_spaces_rows) or len(missing_spaces_rows) or len(non_unique_rows)):
+        if not (len(non_valid_spaces_rows) or len(missing_spaces_rows) or len(non_unique_rows)):
             is_valid = True
 
         context = {"text": text,
@@ -273,7 +273,6 @@ class UserProfileAdmin(admin.ModelAdmin):
     def update_user(self, user_list,is_active_list, email_list, first_name_list, last_name_list, exist_user_ids):
 
         try:
-
             updatable_objects = User.objects.filter(id__in=list(user_list[exist_user_ids]))
             #Todo bulk update and if its same length remove zip
             exist_user_ids = Utils().reorder_list(updatable_objects, user_list)
@@ -400,8 +399,11 @@ class UserProfileAdmin(admin.ModelAdmin):
             not_exist_id_indexes = []
             exist_id_indexes = []
 
-            for index, id in enumerate(list_from_input):
-                if id not in list(id_list):
+            for id in list_from_input:
+                index = list_from_input.index(id)
+                if id in list(id_list):
+                    exist_id_indexes.append(index)
+                else:
                     not_exist_id_indexes.append(index)
                 else:
                     exist_id_indexes.append(index)

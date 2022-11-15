@@ -15,36 +15,6 @@ class AssociatedCategoryInline(admin.StackedInline):
     extra = 1
 
 
-def update_dealerships(request):
-    if request.method == "GET":
-        return redirect("/admin/dealership/dealership")
-        #return HttpResponseRedirect("../../")
-    else:  # POST
-        selected_fields_list = request.POST.get("select-field").split(',')
-        selected_dealerships_list = request.POST.get("select-dealership").split(',')
-
-        try:
-            dealerships = Dealership.objects.filter(id__in=selected_dealerships_list)
-            for selected_field in selected_fields_list:
-                if selected_field == "category":
-                    associated_category_list = []
-                    dealerships_ids_list = list(dealerships.values_list("id", flat=True))
-                    AssociatedCategory.objects.filter(dealership_id__in=dealerships_ids_list).delete()
-                    selected_categories = request.POST.get('category').split(',')
-                    for dealership_id in dealerships_ids_list:
-                        for category_id in selected_categories:
-                            associated_category_list.append(
-                                AssociatedCategory(dealership_id=dealership_id, category_id=int(category_id)))
-                    AssociatedCategory.objects.bulk_create(associated_category_list)
-                else:
-                    dealerships.update(**{selected_field: request.POST.get(selected_field)})
-        except Exception as e:
-            print(e)
-
-        #return HttpResponseRedirect("../dealership")
-        return redirect("/admin/dealership/dealership")
-
-
 class DealershipAdmin(admin.ModelAdmin):
     change_list_template = "dealership/my_dealership_change_list.html"
     inlines = [AssociatedCategoryInline]
@@ -75,7 +45,7 @@ class DealershipAdmin(admin.ModelAdmin):
             # Create form after selecting dealerships and fields
             form = DealershipForm(show_fields=selected_fields_list)
         else:  # Update Edited Fields button is clicked.
-            return update_dealerships(request)  # update
+            return self.update_dealerships(request)  # update
 
         context = {"dealership_opts": DealershipGroup.objects.prefetch_related('dealerships').all(),
                    "field_opts": Dealership._meta.fields,
@@ -86,6 +56,36 @@ class DealershipAdmin(admin.ModelAdmin):
                    }
 
         return TemplateResponse(request, "dealership/dealership_edit.html", context)
+
+    @staticmethod
+    def update_dealerships(request):
+        if request.method == "GET":
+            return redirect("/admin/dealership/dealership")
+            # return HttpResponseRedirect("../../")
+        else:  # POST
+            selected_fields_list = request.POST.get("select-field").split(',')
+            selected_dealerships_list = request.POST.get("select-dealership").split(',')
+
+            try:
+                dealerships = Dealership.objects.filter(id__in=selected_dealerships_list)
+                for selected_field in selected_fields_list:
+                    if selected_field == "category":
+                        associated_category_list = []
+                        dealerships_ids_list = list(dealerships.values_list("id", flat=True))
+                        AssociatedCategory.objects.filter(dealership_id__in=dealerships_ids_list).delete()
+                        selected_categories = request.POST.get('category').split(',')
+                        for dealership_id in dealerships_ids_list:
+                            for category_id in selected_categories:
+                                associated_category_list.append(
+                                    AssociatedCategory(dealership_id=dealership_id, category_id=int(category_id)))
+                        AssociatedCategory.objects.bulk_create(associated_category_list)
+                    else:
+                        dealerships.update(**{selected_field: request.POST.get(selected_field)})
+            except Exception as e:
+                print(e)
+
+            # return HttpResponseRedirect("../dealership")
+            return redirect("/admin/dealership/dealership")
 
 
 admin.site.register(Dealership, DealershipAdmin)
