@@ -11,7 +11,7 @@ class UserProfile(models.Model):
     is_active = models.BooleanField(verbose_name="Is Active")
     first_name = models.CharField(max_length=50, verbose_name="First Name", null=False, blank=False)
     last_name = models.CharField(max_length=50, verbose_name="Last Name", null=False, blank=False)
-    email = models.CharField(max_length=50, verbose_name="Email", null=False, blank=False)
+    email = models.EmailField(max_length=50, verbose_name="Email", null=False, blank=False)
 
     class Meta:
         unique_together = (('user', 'dealership'),)
