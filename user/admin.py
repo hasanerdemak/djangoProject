@@ -197,156 +197,205 @@ class UserProfileAdmin(admin.ModelAdmin):
             create_if_not_exist = True if (request.POST.get("form-check-box") is not None) else False
 
             ### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Model'i pass etmeye meylediyorsun, etme!
-            nonexist_user_ids, exist_user_ids = self.get_exist_and_nonexist_lists(list(user_profile_table['user']),
-                                                                                  User)
-            nonexist_dealership_ids, exist_dealership_ids = self.get_exist_and_nonexist_lists(
-                list(user_profile_table['dealership']),
-                Dealership)
+            nonexist_user_ids, \
+            exist_user_ids = self.get_exist_and_nonexist_lists(list(user_profile_table['user']),
+                                                               'user')
+            nonexist_dealership_ids, \
+            exist_dealership_ids = self.get_exist_and_nonexist_lists(list(user_profile_table['dealership']),
+                                                                     'dealership')
+#id,user,dealership,isActive,dealershipName,firstName,lastName,email
+            self.create_user(user_profile_table['user'],
+                             user_profile_table['isActive'],
+                             user_profile_table['email'],
+                             user_profile_table['firstName'],
+                             user_profile_table['lastName'],
+                             nonexist_user_ids)
 
-            self.create_user(user_profile_table, nonexist_user_ids)
+            self.update_user(user_profile_table['user'],
+                             user_profile_table['isActive'],
+                             user_profile_table['email'],
+                             user_profile_table['firstName'],
+                             user_profile_table['lastName'],
+                             exist_user_ids)
 
-            self.update_user(user_profile_table, exist_user_ids)
+            self.create_dealership(user_profile_table['dealership'],
+                                   nonexist_dealership_ids)
 
-            self.create_dealership(user_profile_table, nonexist_dealership_ids)
+            self.update_dealership(user_profile_table['dealership'],
+                                   user_profile_table['dealershipName'],
+                                   exist_dealership_ids)
 
-            self.update_dealership(user_profile_table, exist_dealership_ids)
+            nonexist_userprofile_ids, \
+            exist_userprofile_ids = self.get_exist_and_nonexist_lists(list(user_profile_table['id']),
+                                                                      'userprofile')
 
-            nonexist_userprofile_ids, exist_userprofile_ids = self.get_exist_and_nonexist_lists(
-                list(user_profile_table['id']),
-                UserProfile)
+            self.create_userprofile(user_profile_table['id'],
+                                    user_profile_table['user'],
+                                    user_profile_table['dealership'],
+                                    user_profile_table['dealershipName'],
+                                    user_profile_table['isActive'],
+                                    user_profile_table['email'],
+                                    user_profile_table['firstName'],
+                                    user_profile_table['lastName'],
+                                    nonexist_userprofile_ids)
 
-            self.create_userprofile(user_profile_table, nonexist_userprofile_ids)
-
-            self.update_userprofile(user_profile_table, exist_userprofile_ids)
+            self.update_userprofile(user_profile_table['id'],
+                                    user_profile_table['user'],
+                                    user_profile_table['dealership'],
+                                    user_profile_table['dealershipName'],
+                                    user_profile_table['isActive'],
+                                    user_profile_table['email'],
+                                    user_profile_table['firstName'],
+                                    user_profile_table['lastName'],
+                                    exist_userprofile_ids)
 
             return HttpResponseRedirect("..")
 
     # Todo:  bütün tabloyu yollama, ilgili sütunları yolla
-    def create_user(self, user_profile_table, nonexist_user_ids):
+    def create_user(self, user_list, is_active_list, email_list, first_name_list, last_name_list, nonexist_user_ids):
         user_list_create = []
 
-        # For user
-        for index, user_index in enumerate(nonexist_user_ids):
-            ## Todo: tek satır for ile yap
-            user_list_create.append(User(id=user_profile_table["user"][user_index],
-                                         is_active=user_profile_table["isActive"][user_index],
-                                         email=user_profile_table["email"][user_index],
-                                         password=''.join(random.choice(self.characters) for i in range(8)),
-                                         username=user_profile_table["firstName"][user_index] +
-                                                  user_profile_table["lastName"][user_index]
-                                         )
-                                    )
+        user_list_create = [User(id=user_list[user_index],
+                                 is_active=is_active_list.get(user_index),
+                                 email=email_list.get(user_index),
+                                 password=''.join(random.choice(self.characters) for i in range(8)),
+                                 username=first_name_list.get(user_index)+
+                                           last_name_list.get(user_index)
+                                 ) for index, user_index in enumerate(nonexist_user_ids)]
+
         try:
             User.objects.bulk_create(user_list_create)
         except Exception as e:
-            print(f"Exception Happened for {user_list_create} | {e}")
+            print(f"Exception Happened When Creating User for {user_list_create} | {e}")
 
         return ""
 
-    def update_user(self, user_profile_table, exist_user_ids):
+    def update_user(self, user_list,is_active_list, email_list, first_name_list, last_name_list, exist_user_ids):
 
         try:
+            updatable_objects = User.objects.filter(id__in=list(user_list[exist_user_ids]))
+            #Todo bulk update and if its same length remove zip
+            exist_user_ids = Utils().reorder_list(updatable_objects, user_list)
 
-            updatable_objects = User.objects.filter(id__in=list(user_profile_table['user'][exist_user_ids]))
-            # Util = Utils()
-            exist_user_ids = Utils().reorder_list(updatable_objects, user_profile_table, "User")
-            # Todo: bulk update
-            for user, user_index in zip(updatable_objects, exist_user_ids):  # uzunlukları aynıysa "zip"e gerek yok
-                user.is_active = user_profile_table['isActive'][user_index]
-                user.email = user_profile_table['email'][user_index]
-                user.first_name = user_profile_table['firstName'][user_index]
-                user.last_name = user_profile_table['lastName'][user_index]
-                user.save()
+            '''User.objects.bulk_update(
+                [
+                    User(id=user.get("id"),
+                         is_active=user_profile_table['isActive'][user_index],
+                         email= user_profile_table['email'][user_index],
+                         first_name=user_profile_table['firstName'][user_index],
+                         last_name=user_profile_table['lastName'][user_index])
+                    for user, user_index in zip(updatable_objects, exist_user_ids)
+                ],
+                ["id","is_active","email","first_name","last_name"],
+                batch_size=1000
+            )
+            '''
+            for user, user_index in zip(updatable_objects, exist_user_ids):
+                user.is_active = is_active_list[user_index]
+                user.email = email_list[user_index]
+                user.first_name = first_name_list[user_index]
+                user.last_name = last_name_list[user_index]
+
+            User.objects.bulk_update(updatable_objects,['is_active','email','first_name','last_name'])
         except Exception as e:
-            print(f"Exception Happened for {updatable_objects} | {e}")
+            print(f"Exception Happened When Updating User for {updatable_objects} | {e}")
         return ""
 
-    def create_dealership(self, user_profile_table, nonexist_dealership_ids):
 
-        dealership_list_create = []
-
+    def create_dealership(self, dealership_list, nonexist_dealership_ids):
+        #When we are creating dealership, default dealership group id is 1
         try:
-            # For dealership
-            for index, dealership_index in enumerate(nonexist_dealership_ids):
-                dealership_list_create.append(Dealership(id=user_profile_table["dealership"][dealership_index],
-                                                         name="D " + str(random.randint(3, 1000)),
-                                                         group_id=1
-                                                         )
-                                              )
+            dealership_list_create = [Dealership(id=dealership_list[dealership_index],
+                                                 name="D " + str(random.randint(3, 1000)),
+                                                 group_id=1
+                                                 )
+                                      for index, dealership_index in enumerate(nonexist_dealership_ids)
+                                      ]
+
             Dealership.objects.bulk_create(dealership_list_create)
         except Exception as e:
-            print(f"Exception Happened for {dealership_list_create} | {e}")
+            print(f"Exception Happened Creating Dealership for {dealership_list_create} | {e}")
 
         return ""
 
-    def update_dealership(self, user_profile_table, exist_dealership_ids):
+    def update_dealership(self, dealership_list, dealership_name_list, exist_dealership_ids):
 
         try:
 
-            updatable_objects = Dealership.objects.filter(
-                id__in=list(user_profile_table['dealership'][exist_dealership_ids]))
-            Util = Utils()
-            exist_dealership_ids = Util.reorder_list(updatable_objects, user_profile_table, "Dealership")
+            updatable_objects = Dealership.objects.filter(id__in=list(dealership_list[exist_dealership_ids]))
+            exist_dealership_ids = Utils().reorder_list(updatable_objects, dealership_list)
+
             for dealership, dealership_index in zip(updatable_objects, exist_dealership_ids):
-                dealership.name = user_profile_table['dealershipName'][dealership_index]
-                dealership.save()
+                dealership.name = dealership_name_list[dealership_index]
+
+            Dealership.objects.bulk_update(updatable_objects,['name'])
         except Exception as e:
-            print(f"Exception Happened for {updatable_objects} | {e}")
+            print(f"Exception Happened When Updating Dealership for {updatable_objects} | {e}")
         return ""
 
-    def create_userprofile(self, user_profile_table, nonexist_userprofile_ids):
+    def create_userprofile(self, userprofile_id_list,user_list,dealership_list,dealership_name,
+                           is_active_list, email_list, first_name_list, last_name_list, nonexist_userprofile_ids):
 
-        userprofile_list_for_create = []
+
         try:
-            for index, row in user_profile_table.iterrows():
-                if row['id'] in list(user_profile_table['id'][nonexist_userprofile_ids]):
-                    userprofile_list_for_create.append(UserProfile(id=row['id'],
-                                                                   user_id=row["user"],
-                                                                   dealership_id=row["dealership"],
-                                                                   dealership_name=row['dealershipName'],
-                                                                   is_active=True,
-                                                                   first_name=row['firstName'],
-                                                                   last_name=row['lastName'],
-                                                                   email=row['email'])
-                                                       )
-            UserProfile.objects.bulk_create(userprofile_list_for_create)
+            userprofile_list_forcreate = [UserProfile(id=userprofile_id_list[index],
+                                                      user_id=user_list,
+                                                      dealership_id=dealership_list,
+                                                      dealership_name=dealership_name,
+                                                      is_active=bool(is_active_list[index]),
+                                                      first_name=first_name_list,
+                                                      last_name=last_name_list,
+                                                      email=email_list)
+                                          for index, row in userprofile_id_list.iterrows()
+                                          if row['id'] in list(userprofile_id_list[nonexist_userprofile_ids])]
+
+            UserProfile.objects.bulk_create(userprofile_list_forcreate)
         except Exception as e:
-            print(f"Exception Happened for {userprofile_list_for_create} | {e}")
+            print(f"Exception Happened When Creating Userprofile for {userprofile_list_forcreate} | {e}")
 
         return ""
 
-    def update_userprofile(self, user_profile_table, exist_userprofile_ids):
+    def update_userprofile(self, userprofile_id_list,user_list,dealership_list,dealership_name,
+                           is_active_list, email_list, first_name_list, last_name_list, exist_userprofile_ids):
 
         try:
-            updatable_objects = UserProfile.objects.filter(id__in=list(user_profile_table['id'][exist_userprofile_ids]))
-            Util = Utils()
-            exist_userprofile_ids = Util.reorder_list(updatable_objects, user_profile_table, "UserProfile")
+            updatable_objects = UserProfile.objects.filter(id__in=list(userprofile_id_list[exist_userprofile_ids]))
+
+            exist_userprofile_ids = Utils().reorder_list(updatable_objects, userprofile_id_list)
             # update userprofiles
             for userprofile, userprofile_index in zip(updatable_objects, exist_userprofile_ids):
-                userprofile.user = User(id=user_profile_table['user'][userprofile_index],
-                                        is_active=user_profile_table['isActive'][userprofile_index],
-                                        email=user_profile_table['email'][userprofile_index],
-                                        username=user_profile_table["firstName"] + user_profile_table["lastName"]
+                userprofile.user = User(id=user_list[userprofile_index],
+                                        is_active=is_active_list[userprofile_index],
+                                        email=email_list[userprofile_index],
+                                        username=first_name_list[userprofile_index] + last_name_list[userprofile_index]
                                         )
+                userprofile.dealership = Dealership(id=dealership_list[userprofile_index], )
+                userprofile.dealership_name = dealership_name[userprofile_index]
+                userprofile.is_active = is_active_list[userprofile_index]
+                userprofile.first_name = first_name_list[userprofile_index]
+                userprofile.last_name = last_name_list[userprofile_index]
+                userprofile.email = email_list[userprofile_index]
 
-                userprofile.dealership = Dealership(id=user_profile_table["dealership"][userprofile_index], )
-                userprofile.dealership_name = user_profile_table['dealershipName'][userprofile_index]
-                userprofile.is_active = user_profile_table['isActive'][userprofile_index]
-                userprofile.first_name = user_profile_table['firstName'][userprofile_index]
-                userprofile.last_name = user_profile_table['lastName'][userprofile_index]
-                userprofile.email = user_profile_table['email'][userprofile_index]
-                userprofile.save()
+            UserProfile.objects.bulk_update(updatable_objects,['user','dealership','dealership_name','is_active','first_name','last_name','email'])
 
         except Exception as e:
-            print(f"Exception Happened for {updatable_objects} | {e}")
+            print(f"Exception Happened When Updating Userprofile for {updatable_objects} | {e}")
 
         return ""
 
-    def get_exist_and_nonexist_lists(self, list_from_input, model):
+    def get_exist_and_nonexist_lists(self, list_from_input, model_str):
 
         # Get all ids from model objects
         try:
-            id_list = model.objects.values_list('id', flat=True)
+            if model_str== 'user':
+                id_list = User.objects.values_list('id', flat=True)
+            elif model_str== 'dealership':
+                id_list = Dealership.objects.values_list('id', flat=True)
+            elif model_str== 'userprofile':
+                id_list = UserProfile.objects.values_list('id', flat=True)
+            else:
+                raise Exception('Unknown Model')
+
             not_exist_id_indexes = []
             exist_id_indexes = []
 
@@ -356,11 +405,12 @@ class UserProfileAdmin(admin.ModelAdmin):
                     exist_id_indexes.append(index)
                 else:
                     not_exist_id_indexes.append(index)
+                else:
+                    exist_id_indexes.append(index)
         except Exception as e:
             print(f"Exception Happened for {id_list} | {e}")
 
         return not_exist_id_indexes, exist_id_indexes
-
 
 admin.site.register(UserProfile, UserProfileAdmin)
 
@@ -427,19 +477,12 @@ class Utils:
         return output
 
     def increase_list_values(self, value_list, increase_amount):
-        output = []
-        for value in value_list:
-            output.append(value + increase_amount)
-        return output
+
+        return [value + increase_amount
+                for value in value_list]
 
     # Todo: tabloyu yollama
-    def reorder_list(self, updatable_list, table, model_str):
-        output = []
-        for value in updatable_list:
-            if model_str == 'User':
-                output.append(table['user'].values.tolist().index(value.id))
-            elif model_str == 'Dealership':
-                output.append(table['dealership'].values.tolist().index(value.id))
-            elif model_str == 'UserProfile':
-                output.append(table['id'].values.tolist().index(value.user_id))
-        return output
+    def reorder_list(self, updatable_list, model_id_list):
+
+        return [model_id_list.values.tolist().index(value.id)
+                for value in updatable_list]
