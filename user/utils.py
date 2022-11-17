@@ -80,6 +80,6 @@ def increase_list_values(value_list, increase_amount):
             for value in value_list]
 
 
-def reorder_list(updatable_list, model_id_list):
-    return [model_id_list.values.tolist().index(value.id)
-            for value in updatable_list]
+def reorder_list(updatable_list_ids, model_id_list):
+    return [model_id_list.index(obj_id)
+            for obj_id in updatable_list_ids]

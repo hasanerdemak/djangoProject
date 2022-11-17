@@ -197,27 +197,36 @@ class UserProfileAdmin(admin.ModelAdmin):
                 list(user_profile_table['dealership_id']), 'dealership')
             # id,user_id,dealership_id,isActive,dealershipName,firstName,lastName,email
             if create_if_not_exist:
-                self.create_user(user_profile_table['user_id'],
-                                 user_profile_table['is_active'],
-                                 user_profile_table['email'],
-                                 user_profile_table['first_name'],
-                                 user_profile_table['last_name'],
-                                 non_exist_user_ids)
+                user_fields_list = ["user_id"]
+                for field in User._meta.fields:
+                    if field.name in user_profile_table.columns.values and field.name != "id":
+                        user_fields_list.append(field.name)
+                self.create_user(user_profile_table[user_fields_list].iloc[non_exist_user_ids])
 
-            self.update_user(user_profile_table['user_id'],
-                             user_profile_table['is_active'],
-                             user_profile_table['email'],
-                             user_profile_table['first_name'],
-                             user_profile_table['last_name'],
-                             exist_user_ids)
+                dealership_fields_list = ["dealership_id", "dealership_name"]
+                for field in Dealership._meta.fields:
+                    if field.name in user_profile_table.columns.values and field.name != "id":
+                        dealership_fields_list.append(field.name)
+                self.create_dealership(user_profile_table[dealership_fields_list].iloc[non_exist_dealership_ids])
 
-            if create_if_not_exist:
-                self.create_dealership(user_profile_table['dealership_id'],
-                                       non_exist_dealership_ids)
+            # Get User values to update
+            users_values_to_update_dict = dict()
+            users_values_to_update_dict["id"] = user_profile_table["user_id"][exist_user_ids].tolist()
+            for field in User._meta.fields:
+                if field.name in user_profile_table.columns.values and field.name != "id":
+                    users_values_to_update_dict[field.name] = user_profile_table[field.name].iloc[
+                        exist_user_ids].tolist()
+            self.update_objects("user", **users_values_to_update_dict)
 
-            self.update_dealership(user_profile_table['dealership_id'],
-                                   user_profile_table['dealership_name'],
-                                   exist_dealership_ids)
+            dealerships_values_to_update_dict = dict()
+            dealerships_values_to_update_dict["id"] = user_profile_table["dealership_id"][exist_dealership_ids].tolist()
+            dealerships_values_to_update_dict["name"] = user_profile_table["dealership_name"][
+                exist_dealership_ids].tolist()
+            for field in Dealership._meta.fields:
+                if field.name in user_profile_table.columns.values and field.name != "id" and field.name != "name":
+                    dealerships_values_to_update_dict[field.name] = user_profile_table[field.name].iloc[
+                        exist_dealership_ids].tolist()
+            self.update_objects("dealership", **dealerships_values_to_update_dict)
 
             non_exist_user_profile_ids, exist_user_profile_ids = self.get_exist_and_non_exist_lists(
                 list(user_profile_table['id']), 'userprofile')
@@ -239,94 +248,61 @@ class UserProfileAdmin(admin.ModelAdmin):
                                      user_profile_table['last_name'],
                                      non_exist_user_profile_ids)
 
-            self.update_user_profile(user_profile_table['id'],
-                                     user_id_list_to_send,
-                                     dealership_id_list_to_send,
-                                     user_profile_table['dealership_name'],
-                                     user_profile_table['is_active'],
-                                     user_profile_table['email'],
-                                     user_profile_table['first_name'],
-                                     user_profile_table['last_name'],
-                                     exist_user_profile_ids)
+            user_profiles_values_to_update_dict = dict()
+            user_profiles_values_to_update_dict["user_id"] = user_profile_table["user_id"][
+                exist_user_profile_ids].tolist()
+            user_profiles_values_to_update_dict["dealership_id"] = user_profile_table["dealership_id"][
+                exist_user_profile_ids].tolist()
+            for field in UserProfile._meta.fields:
+                if field.name in user_profile_table.columns.values and field.name != "user" \
+                        and field.name != "dealership":
+                    user_profiles_values_to_update_dict[field.name] = user_profile_table[field.name].iloc[
+                        exist_user_profile_ids].tolist()
+            self.update_objects("userprofile", **user_profiles_values_to_update_dict)
 
             return redirect("/admin/user/userprofile")
 
-    def create_user(self, user_list, is_active_list, email_list, first_name_list, last_name_list, non_exist_user_ids):
-        user_list_create = [User(id=user_list[user_index],
-                                 is_active=is_active_list.get(user_index),
-                                 email=email_list.get(user_index),
-                                 password=''.join(random.choice(self.characters) for _ in range(8)),
-                                 username=first_name_list.get(user_index) +
-                                          last_name_list.get(user_index)
-                                 ) for index, user_index in enumerate(non_exist_user_ids)]
+    def create_user(self, **kwargs):
+        passwords_list = [''.join(random.choice(self.characters) for _ in range(8))
+                          for _ in range(len(kwargs["id"]))]
+
+        usernames_list = [kwargs["first_name"][user_index] +
+                          kwargs["last_name"][user_index]
+                          for user_index in range(len(kwargs["id"]))]
+
+        kwargs["password"] = passwords_list
+        kwargs["username"] = usernames_list
+
+        kwargs["id"] = kwargs.pop("user_id")
+
+        user_list_create = []
+        for i in range(len(kwargs["id"])):
+            for row in zip(*kwargs):
+                user_list_create.append(User(row))
 
         try:
             User.objects.bulk_create(user_list_create)
         except Exception as e:
-            print(f"Exception Happened When Creating User for {user_list_create} | {e}")
+            print(f"{e} Happened When Creating User")
 
         return ""
 
     @staticmethod
-    def update_user(user_list, is_active_list, email_list, first_name_list, last_name_list, exist_user_ids):
-        updatable_objects = []
-        try:
-            updatable_objects = User.objects.filter(id__in=list(user_list[exist_user_ids]))
-            exist_user_ids = utils.reorder_list(updatable_objects, user_list)
+    def create_dealership(dealerships_to_create_df):
 
-            '''User.objects.bulk_update(
-                [
-                    User(id=user.get("id"),
-                         is_active=user_profile_table['isActive'][user_index],
-                         email= user_profile_table['email'][user_index],
-                         first_name=user_profile_table['firstName'][user_index],
-                         last_name=user_profile_table['lastName'][user_index])
-                    for user, user_index in zip(updatable_objects, exist_user_ids)
-                ],
-                ["id","is_active","email","first_name","last_name"],
-                batch_size=1000
-            )
-            '''
-            for user, user_index in zip(updatable_objects, exist_user_ids):
-                user.is_active = is_active_list[user_index]
-                user.email = email_list[user_index]
-                user.first_name = first_name_list[user_index]
-                user.last_name = last_name_list[user_index]
+        group_ids_list = [1 for _ in range(len(dealerships_to_create_df))]
+        dealerships_to_create_df = dealerships_to_create_df.assign(group_id=group_ids_list)
 
-            User.objects.bulk_update(updatable_objects, ['is_active', 'email', 'first_name', 'last_name'])
-        except Exception as e:
-            print(f"Exception Happened When Updating User for {updatable_objects} | {e}")
-        return ""
-
-    @staticmethod
-    def create_dealership(dealership_list, non_exist_dealership_ids):
-        # When we are creating dealership, default dealership group id is 1
-        dealership_list_create = [Dealership(id=dealership_list[dealership_index],
-                                             name="D " + str(random.randint(3, 1000)),
-                                             group_id=1
-                                             )
-                                  for index, dealership_index in enumerate(non_exist_dealership_ids)
-                                  ]
+        dealerships_to_create_df.rename(columns={'dealership_id': 'id'}, inplace=True)
+        dealerships_to_create_df.rename(columns={'dealership_name': 'name'}, inplace=True)
+        dealership_list_create = []
+        for i in range(len(dealerships_to_create_df)):
+            dealership_list_create.append(Dealership(**dealerships_to_create_df.iloc[i]))
         try:
             Dealership.objects.bulk_create(dealership_list_create)
         except Exception as e:
-            print(f"Exception Happened Creating Dealership for {dealership_list_create} | {e}")
+            print(f"{e} Happened Creating Dealership")
 
-        return ""
-
-    @staticmethod
-    def update_dealership(dealership_list, dealership_name_list, exist_dealership_ids):
-        updatable_objects = []
-        try:
-            updatable_objects = Dealership.objects.filter(id__in=list(dealership_list[exist_dealership_ids]))
-            exist_dealership_ids = utils.reorder_list(updatable_objects, dealership_list)
-
-            for dealership, dealership_index in zip(updatable_objects, exist_dealership_ids):
-                dealership.name = dealership_name_list[dealership_index]
-
-            Dealership.objects.bulk_update(updatable_objects, ['name'])
-        except Exception as e:
-            print(f"Exception Happened When Updating Dealership for {updatable_objects} | {e}")
         return ""
 
     @staticmethod
@@ -346,40 +322,38 @@ class UserProfileAdmin(admin.ModelAdmin):
         try:
             UserProfile.objects.bulk_create(user_profile_list_for_create)
         except Exception as e:
-            print(f"Exception Happened When Creating User Profile for {user_profile_list_for_create} | {e}")
+            print(f"{e} Happened When Creating User Profile")
 
         return ""
 
     @staticmethod
-    def update_user_profile(user_profile_id_list, user_list, dealership_list, dealership_name,
-                            is_active_list, email_list, first_name_list, last_name_list, exist_user_profile_ids):
-        updatable_objects = []
+    def update_objects(model_str, **kwargs):
         try:
-            updatable_objects = UserProfile.objects.filter(id__in=list(user_profile_id_list[exist_user_profile_ids]))
+            if model_str == 'user':
+                updatable_objects = User.objects.filter(id__in=kwargs["id"])
+            elif model_str == 'dealership':
+                updatable_objects = Dealership.objects.filter(id__in=kwargs["id"])
+            elif model_str == 'userprofile':
+                updatable_objects = UserProfile.objects.filter(id__in=kwargs["id"])
+            else:
+                raise Exception('Unknown Model')
 
-            exist_user_profile_ids = utils.reorder_list(updatable_objects, user_profile_id_list)
-            # update user_profiles
-            for user_profile, user_profile_index in zip(updatable_objects, exist_user_profile_ids):
-                user_profile.user = User(id=user_list[user_profile_index],
-                                         is_active=is_active_list[user_profile_index],
-                                         email=email_list[user_profile_index],
-                                         username=first_name_list[user_profile_index] + last_name_list[
-                                             user_profile_index]
-                                         )
-                user_profile.dealership = Dealership(id=dealership_list[user_profile_index], )
-                user_profile.dealership_name = dealership_name[user_profile_index]
-                user_profile.is_active = is_active_list[user_profile_index]
-                user_profile.first_name = first_name_list[user_profile_index]
-                user_profile.last_name = last_name_list[user_profile_index]
-                user_profile.email = email_list[user_profile_index]
+            exist_objects_indices = utils.reorder_list(list(updatable_objects.values_list("id", flat=True)),
+                                                       kwargs["id"])
+            kwargs.pop("id")
 
-            UserProfile.objects.bulk_update(updatable_objects,
-                                            ['user', 'dealership', 'dealership_name', 'is_active', 'first_name',
-                                             'last_name', 'email'])
+            for obj, index in zip(updatable_objects, exist_objects_indices):
+                for key, value in kwargs.items():
+                    setattr(obj, key, value[index])
 
+            if model_str == 'user':
+                User.objects.bulk_update(updatable_objects, kwargs.keys())
+            elif model_str == 'dealership':
+                Dealership.objects.bulk_update(updatable_objects, kwargs.keys())
+            elif model_str == 'userprofile':
+                UserProfile.objects.bulk_update(updatable_objects, kwargs.keys())
         except Exception as e:
-            print(f"Exception Happened When Updating Userprofile for {updatable_objects} | {e}")
-
+            print(f"{e} Happened When Updating {model_str}")
         return ""
 
     @staticmethod

@@ -8,7 +8,7 @@ class UserProfile(models.Model):
     dealership = models.ForeignKey(Dealership, on_delete=models.DO_NOTHING, verbose_name="Dealership",
                                    related_name="user_profiles")
     dealership_name = models.CharField(max_length=50, verbose_name="Dealership Name", null=False, blank=False)
-    is_active = models.BooleanField(verbose_name="Is Active")
+    is_active = models.BooleanField(verbose_name="Is Active", default=True)
     first_name = models.CharField(max_length=50, verbose_name="First Name", null=False, blank=False)
     last_name = models.CharField(max_length=50, verbose_name="Last Name", null=False, blank=False)
     email = models.EmailField(max_length=50, verbose_name="Email", null=False, blank=False)
