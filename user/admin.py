@@ -197,17 +197,24 @@ class UserProfileAdmin(admin.ModelAdmin):
                 list(user_profile_table['dealership_id']), 'dealership')
             # id,user_id,dealership_id,isActive,dealershipName,firstName,lastName,email
             if create_if_not_exist:
-                user_fields_list = ["user_id"]
+                new_users_values_to_create_dict = dict()
+                new_users_values_to_create_dict["id"] = user_profile_table["user_id"][non_exist_user_ids].tolist()
                 for field in User._meta.fields:
                     if field.name in user_profile_table.columns.values and field.name != "id":
-                        user_fields_list.append(field.name)
-                self.create_user(user_profile_table[user_fields_list].iloc[non_exist_user_ids])
+                        new_users_values_to_create_dict[field.name] = user_profile_table[field.name].iloc[
+                            non_exist_user_ids].tolist()
+                self.create_user(**new_users_values_to_create_dict)
 
-                dealership_fields_list = ["dealership_id", "dealership_name"]
+                new_dealerships_values_to_create_dict = dict()
+                new_dealerships_values_to_create_dict["id"] = user_profile_table["dealership_id"][
+                    non_exist_dealership_ids].tolist()
+                new_dealerships_values_to_create_dict["name"] = user_profile_table["dealership_name"][
+                    non_exist_dealership_ids].tolist()
                 for field in Dealership._meta.fields:
-                    if field.name in user_profile_table.columns.values and field.name != "id":
-                        dealership_fields_list.append(field.name)
-                self.create_dealership(user_profile_table[dealership_fields_list].iloc[non_exist_dealership_ids])
+                    if field.name in user_profile_table.columns.values and field.name != "id" and field.name != "name":
+                        new_dealerships_values_to_create_dict[field.name] = user_profile_table[field.name].iloc[
+                            non_exist_dealership_ids].tolist()
+                self.create_dealership(**new_dealerships_values_to_create_dict)
 
             # Get User values to update
             users_values_to_update_dict = dict()
@@ -265,7 +272,6 @@ class UserProfileAdmin(admin.ModelAdmin):
     def create_user(self, **kwargs):
         passwords_list = [''.join(random.choice(self.characters) for _ in range(8))
                           for _ in range(len(kwargs["id"]))]
-
         usernames_list = [kwargs["first_name"][user_index] +
                           kwargs["last_name"][user_index]
                           for user_index in range(len(kwargs["id"]))]
@@ -273,12 +279,8 @@ class UserProfileAdmin(admin.ModelAdmin):
         kwargs["password"] = passwords_list
         kwargs["username"] = usernames_list
 
-        kwargs["id"] = kwargs.pop("user_id")
-
-        user_list_create = []
-        for i in range(len(kwargs["id"])):
-            for row in zip(*kwargs):
-                user_list_create.append(User(row))
+        user_list_create = [
+            User(**{key: values[i] for key, values in kwargs.items()}) for i in range(len(kwargs["id"]))]
 
         try:
             User.objects.bulk_create(user_list_create)
@@ -288,16 +290,13 @@ class UserProfileAdmin(admin.ModelAdmin):
         return ""
 
     @staticmethod
-    def create_dealership(dealerships_to_create_df):
+    def create_dealership(**kwargs):
+        group_ids_list = [1 for _ in range(len(kwargs["id"]))]
 
-        group_ids_list = [1 for _ in range(len(dealerships_to_create_df))]
-        dealerships_to_create_df = dealerships_to_create_df.assign(group_id=group_ids_list)
+        kwargs["group_id"] = group_ids_list
 
-        dealerships_to_create_df.rename(columns={'dealership_id': 'id'}, inplace=True)
-        dealerships_to_create_df.rename(columns={'dealership_name': 'name'}, inplace=True)
-        dealership_list_create = []
-        for i in range(len(dealerships_to_create_df)):
-            dealership_list_create.append(Dealership(**dealerships_to_create_df.iloc[i]))
+        dealership_list_create = [
+            Dealership(**{key: values[i] for key, values in kwargs.items()}) for i in range(len(kwargs["id"]))]
         try:
             Dealership.objects.bulk_create(dealership_list_create)
         except Exception as e:
@@ -343,8 +342,8 @@ class UserProfileAdmin(admin.ModelAdmin):
             kwargs.pop("id")
 
             for obj, index in zip(updatable_objects, exist_objects_indices):
-                for key, value in kwargs.items():
-                    setattr(obj, key, value[index])
+                for key, values in kwargs.items():
+                    setattr(obj, key, values[index])
 
             if model_str == 'user':
                 User.objects.bulk_update(updatable_objects, kwargs.keys())
