@@ -195,7 +195,9 @@ class UserProfileAdmin(admin.ModelAdmin):
                 list(user_profile_table['user_id']), 'user')
             non_exist_dealership_ids, exist_dealership_ids = self.get_exist_and_non_exist_lists(
                 list(user_profile_table['dealership_id']), 'dealership')
-            # id,user_id,dealership_id,isActive,dealershipName,firstName,lastName,email
+            non_exist_user_profile_ids, exist_user_profile_ids = self.get_exist_and_non_exist_lists(
+                list(user_profile_table['id']), 'userprofile')
+
             if create_if_not_exist:
                 new_users_values_to_create_dict = dict()
                 new_users_values_to_create_dict["id"] = user_profile_table["user_id"][non_exist_user_ids].tolist()
@@ -203,7 +205,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                     if field.name in user_profile_table.columns.values and field.name != "id":
                         new_users_values_to_create_dict[field.name] = user_profile_table[field.name].iloc[
                             non_exist_user_ids].tolist()
-                self.create_user(**new_users_values_to_create_dict)
+                self.create_objects("user", **new_users_values_to_create_dict)
 
                 new_dealerships_values_to_create_dict = dict()
                 new_dealerships_values_to_create_dict["id"] = user_profile_table["dealership_id"][
@@ -214,7 +216,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                     if field.name in user_profile_table.columns.values and field.name != "id" and field.name != "name":
                         new_dealerships_values_to_create_dict[field.name] = user_profile_table[field.name].iloc[
                             non_exist_dealership_ids].tolist()
-                self.create_dealership(**new_dealerships_values_to_create_dict)
+                self.create_objects("dealership", **new_dealerships_values_to_create_dict)
 
             # Get User values to update
             users_values_to_update_dict = dict()
@@ -237,19 +239,13 @@ class UserProfileAdmin(admin.ModelAdmin):
             self.update_objects("dealership", **dealerships_values_to_update_dict)
 
             # Create Userprofiles
-            non_exist_user_profile_ids, exist_user_profile_ids = self.get_exist_and_non_exist_lists(
-                list(user_profile_table['id']), 'userprofile')
-
             user_profiles_values_to_create_dict = dict()
-
             if create_if_not_exist:
                 intersection_of_lists = non_exist_user_profile_ids
                 user_profiles_values_to_create_dict["user_id"] = user_profile_table['user_id'][
                     intersection_of_lists].tolist()
                 user_profiles_values_to_create_dict['dealership_id'] = user_profile_table['dealership_id'][
                     intersection_of_lists].tolist()
-
-
             else:  # Send only exist users and dealerships
                 intersection_of_lists = list(
                     set(non_exist_user_profile_ids) & set(exist_user_ids) & set(exist_dealership_ids))
@@ -263,7 +259,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                         and field.name != "dealership":
                     user_profiles_values_to_create_dict[field.name] = user_profile_table[field.name].iloc[
                         intersection_of_lists].tolist()
-            self.create_user_profile(**user_profiles_values_to_create_dict)
+            self.create_objects("userprofile", **user_profiles_values_to_create_dict)
 
             user_profiles_values_to_update_dict = dict()
             user_profiles_values_to_update_dict["user_id"] = user_profile_table["user_id"][
@@ -279,48 +275,32 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             return redirect("/admin/user/userprofile")
 
-    def create_user(self, **kwargs):
-
-        kwargs["password"] = [''.join(random.choice(self.characters) for _ in range(8))
-                              for _ in range(len(kwargs["id"]))]
-        kwargs["username"] = [kwargs["first_name"][user_index] +
-                              kwargs["last_name"][user_index]
-                              for user_index in range(len(kwargs["id"]))]
+    def create_objects(self, model_str, **kwargs):
+        if model_str == 'user':
+            kwargs["password"] = [''.join(random.choice(self.characters) for _ in range(8))
+                                  for _ in range(len(kwargs["id"]))]
+            kwargs["username"] = [kwargs["first_name"][user_index] +
+                                  kwargs["last_name"][user_index]
+                                  for user_index in range(len(kwargs["id"]))]
+        elif model_str == 'dealership':
+            kwargs["group_id"] = [1 for _ in range(len(kwargs["id"]))]
+        elif model_str == 'userprofile':
+            pass
+        else:
+            raise Exception('Unknown Model')
 
         try:
-            User.objects.bulk_create([User(**{key: values[i]
-                                              for key, values in kwargs.items()})
-                                      for i in range(len(kwargs["id"]))]
-                                     )
+            if model_str == 'user':
+                User.objects.bulk_create([User(**{key: values[i] for key, values in kwargs.items()})
+                                          for i in range(len(kwargs["id"]))])
+            elif model_str == 'dealership':
+                Dealership.objects.bulk_create([Dealership(**{key: values[i] for key, values in kwargs.items()})
+                                                for i in range(len(kwargs["id"]))])
+            elif model_str == 'userprofile':
+                UserProfile.objects.bulk_create([UserProfile(**{key: values[i] for key, values in kwargs.items()})
+                                                 for i in range(len(kwargs["id"]))])
         except Exception as e:
             print(f"{e} Happened When Creating User")
-
-        return ""
-
-    @staticmethod
-    def create_dealership(**kwargs):
-
-        kwargs["group_id"] = [1 for _ in range(len(kwargs["id"]))]
-
-        try:
-            Dealership.objects.bulk_create([
-                Dealership(**{key: values[i]
-                              for key, values in kwargs.items()})
-                for i in range(len(kwargs["id"]))])
-        except Exception as e:
-            print(f"{e} Happened Creating Dealership")
-
-        return ""
-
-    @staticmethod
-    def create_user_profile(**kwargs):
-
-        try:
-            UserProfile.objects.bulk_create([UserProfile(**{key: values[i]
-                                                            for key, values in kwargs.items()})
-                                             for i in range(len(kwargs["id"]))])
-        except Exception as e:
-            print(f"{e} Happened When Creating User Profile")
 
         return ""
 
