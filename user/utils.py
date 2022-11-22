@@ -43,8 +43,8 @@ def indices_of_non_boolean_values(value_list):
 
 
 def indices_of_non_valid_names(value_list):
-    return [index for index in range(len(value_list)) if
-            not str(value_list[index]).replace(" ", "").isalpha()]
+    return [index for index in range(len(value_list)) if (value_list[index] != "" and
+            not str(value_list[index]).replace(" ", "").isalpha())]
 
 
 def indices_of_non_unique_cells(value_list):
@@ -68,14 +68,17 @@ def merge_lists(*lists):
 
 
 def read_csv(text):
-    splitted_text = str(text).split("\r\n")
+    lines = str(text).split("\r\n")
 
-    user_profile_dict = {key: [] for key in splitted_text[0].split(",")}
-    for i in range(1, len(splitted_text)):
-        line = splitted_text[i].split(",")
+    user_profile_dict = {key: [] for key in lines[0].split(",")}
+    for i in range(1, len(lines)):
+        values = lines[i].split(",")
         j = 0
         for key in user_profile_dict.keys():
-            user_profile_dict[key].append(line[j])
+            try:
+                user_profile_dict[key].append(values[j])
+            except IndexError:
+                user_profile_dict[key].append("")
             j += 1
 
     return user_profile_dict
