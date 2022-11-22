@@ -61,98 +61,102 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         user_profile_dict = utils.read_csv(text)
 
-        non_valid_field_indices = utils.non_valid_field_indices(user_profile_dict.keys())
-        print(non_valid_field_indices)
         missing_spaces_rows = []
         missing_spaces_cols = []
         missing_spaces_messages = ''
-        col_index = 0
-        for key in user_profile_dict.keys():
-            index_list = [index for index, value in enumerate(user_profile_dict[key]) if not value or value == ""]
-
-            for j in index_list:
-                missing_spaces_rows.append(j)
-                missing_spaces_cols.append(col_index)
-            if len(index_list) != 0:
-                missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
-                    utils.increase_list_values(index_list, 1)) + ' is/are required. \r\n'
-            col_index += 1
-
-        model_field_types_dict = {"int": [models.AutoField, models.BigAutoField,
-                                          models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
-                                          models.PositiveIntegerField, models.PositiveBigIntegerField,
-                                          models.PositiveSmallIntegerField,
-                                          models.ForeignKey],
-                                  "bool": [models.BooleanField, models.NullBooleanField],
-                                  "name": [models.CharField],
-                                  "email": [models.EmailField]}
-
         non_valid_spaces_rows = []
         non_valid_spaces_cols = []
         non_valid_messages = ''
-        col_index = 0
-
-        for key in user_profile_dict.keys():
-            index_list = []
-            if col_index not in non_valid_field_indices:
-                col_type = type(UserProfile._meta.get_field(key))
-                if col_type in model_field_types_dict["int"]:
-                    index_list = utils.indices_of_non_int_values(user_profile_dict[key])
-                elif col_type in model_field_types_dict["bool"]:
-                    index_list = utils.indices_of_non_boolean_values(user_profile_dict[key])
-                elif col_type in model_field_types_dict["name"] and key != "dealership_name":
-                    index_list = utils.indices_of_non_valid_names(user_profile_dict[key])
-                elif col_type in model_field_types_dict["email"]:
-                    index_list = utils.indices_of_non_valid_emails(user_profile_dict[key])
-
-                for j in index_list:
-                    non_valid_spaces_rows.append(j)
-                    non_valid_spaces_cols.append(col_index)
-                if len(index_list) != 0:
-                    non_valid_messages += '"' + key + '" fields at row(s): ' + str(
-                        utils.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
-            col_index += 1
-
-        unique_cols = ["id", ["user_id", "dealership_id"]]
         non_unique_rows = []
         non_unique_cols = []
         non_unique_messages = ''
-        col_index = 0
-        for col in unique_cols:
-            if isinstance(col, list):
-                list_to_give = utils.merge_lists(*[user_profile_dict[col[i]] for i in range(len(col))])
-            else:
-                list_to_give = user_profile_dict[col]
-            index_list = utils.indices_of_non_unique_cells(list_to_give)
-
-            if len(index_list) != 0:
-                if isinstance(col, list):
-                    for _ in col:
-                        for j in index_list:
-                            non_unique_rows.append(j)
-                            non_unique_cols.append(col_index)
-                        col_index += 1
-
-                    non_unique_messages += str(col) + ' pairs at row(s): '
-                    for index in index_list:
-                        non_unique_messages += str(index + 1) + ', '
-
-                    non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
-                    non_unique_messages += ' must be unique. \r\n'
-                else:
-                    for j in index_list:
-                        non_unique_rows.append(j)
-                        non_unique_cols.append(col_index)
-                    non_unique_messages += '"' + col + '" fields at row(s): ' + str(
-                        utils.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
-            col_index += 1
-
-
         show_table = 'true'
         is_valid = False
 
-        if not (len(non_valid_spaces_rows) or len(missing_spaces_rows) or len(non_unique_rows) or len(non_valid_field_indices)):
-            is_valid = True
+        non_valid_field_indices = utils.non_valid_field_indices(user_profile_dict.keys())
+        # If There is not non-valid field then check other errors
+        if len(non_valid_field_indices) == 0:
+            col_index = 0
+            for key in user_profile_dict.keys():
+                index_list = [index for index, value in enumerate(user_profile_dict[key]) if not value or value == ""]
+
+                for j in index_list:
+                    missing_spaces_rows.append(j)
+                    missing_spaces_cols.append(col_index)
+                if len(index_list) != 0:
+                    missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
+                        utils.increase_list_values(index_list, 1)) + ' is/are required. \r\n'
+                col_index += 1
+
+            model_field_types_dict = {"int": [models.AutoField, models.BigAutoField,
+                                              models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
+                                              models.PositiveIntegerField, models.PositiveBigIntegerField,
+                                              models.PositiveSmallIntegerField,
+                                              models.ForeignKey],
+                                      "bool": [models.BooleanField, models.NullBooleanField],
+                                      "name": [models.CharField],
+                                      "email": [models.EmailField]}
+
+            col_index = 0
+            for key in user_profile_dict.keys():
+                index_list = []
+                if col_index not in non_valid_field_indices:
+                    col_type = type(UserProfile._meta.get_field(key))
+                    if col_type in model_field_types_dict["int"]:
+                        index_list = utils.indices_of_non_int_values(user_profile_dict[key])
+                    elif col_type in model_field_types_dict["bool"]:
+                        index_list = utils.indices_of_non_boolean_values(user_profile_dict[key])
+                    elif col_type in model_field_types_dict["name"] and key != "dealership_name":
+                        index_list = utils.indices_of_non_valid_names(user_profile_dict[key])
+                    elif col_type in model_field_types_dict["email"]:
+                        index_list = utils.indices_of_non_valid_emails(user_profile_dict[key])
+
+                    for j in index_list:
+                        non_valid_spaces_rows.append(j)
+                        non_valid_spaces_cols.append(col_index)
+                    if len(index_list) != 0:
+                        non_valid_messages += '"' + key + '" fields at row(s): ' + str(
+                            utils.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
+                col_index += 1
+
+            unique_cols = ["id", ["user_id", "dealership_id"]]
+            col_index = 0
+            for col in unique_cols:
+                if isinstance(col, list):
+                    list_to_give = utils.merge_lists(*[user_profile_dict[col[i]] for i in range(len(col))])
+                else:
+                    list_to_give = user_profile_dict[col]
+                index_list = utils.indices_of_non_unique_cells(list_to_give)
+
+                if len(index_list) != 0:
+                    if isinstance(col, list):
+                        for _ in col:
+                            for j in index_list:
+                                non_unique_rows.append(j)
+                                non_unique_cols.append(col_index)
+                            col_index += 1
+
+                        non_unique_messages += str(col) + ' pairs at row(s): '
+                        for index in index_list:
+                            non_unique_messages += str(index + 1) + ', '
+
+                        non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
+                        non_unique_messages += ' must be unique. \r\n'
+                    else:
+                        for j in index_list:
+                            non_unique_rows.append(j)
+                            non_unique_cols.append(col_index)
+                        non_unique_messages += '"' + col + '" fields at row(s): ' + str(
+                            utils.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
+                col_index += 1
+
+            if not (len(non_valid_spaces_rows) or len(missing_spaces_rows) or len(non_unique_rows) or len(
+                    non_valid_field_indices)):
+                is_valid = True
+
+            error = None if is_valid else "Please Click On The Wrong Cells To Edit The Text"
+        else:
+            error = "Please Correct The Field Names First"
 
         context = {"text": text,
                    "create_if_not_exist": create_if_not_exist,
@@ -168,7 +172,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                    "non_valid_field_indices": non_valid_field_indices,
                    "show_table": show_table,
                    "is_valid": is_valid,
-                   "error": None}
+                   "error": error}
 
         return render(request, "user/user_profile_add.html", context)
 
@@ -176,7 +180,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         if request.method == "GET":
             return redirect("/admin/user/userprofile")
         else:  # POST
-            text = request.POST.get("form-text-area")
+            text = request.POST.get("form-text-area").rstrip("\r\n")
 
             user_profile_dict = utils.read_csv(text)
 

@@ -209,12 +209,10 @@
     </form>
 
     <div style="margin-top: 20px">
-        <p style="color: #ff0000; text-indent: 30px; text-transform: uppercase;">
-            {% if error %}{{ error }}{% endif %}</p> <!--class="form-control"-->
         <!--Error Colors-->
         <div>
-            {% if missing_spaces_rows or non_valid_spaces_rows or non_unique_rows %}
-                <p style="font-weight: bold; color: #b00020">Please Click On The Wrong Cells To Edit The Text</p>
+            {% if error %}
+                <p style="font-weight: bold; color: #b00020">{{ error }}</p>
             {% endif %}
             {% if missing_spaces_rows %}
                 <span class="hovertext" data-hover="{{ missing_spaces_messages }}">
@@ -341,7 +339,8 @@
                 return;
             }
 
-            var nonValidFieldIndices = {{ non_valid_field_indices }}
+            var nonValidFieldIndices =
+            {{ non_valid_field_indices }}
             for (let i = 0; i < nonValidFieldIndices.length; i++) {
                 table.rows[0].cells[nonValidFieldIndices[i] + 1].style.backgroundColor = '#ffcc00';
                 table.rows[0].cells[nonValidFieldIndices[i] + 1].contentEditable = true;
