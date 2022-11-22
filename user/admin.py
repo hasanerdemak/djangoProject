@@ -62,6 +62,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         user_profile_dict = utils.read_csv(text)
 
+        non_valid_field_indices = utils.non_valid_field_indices(user_profile_dict.keys())
+        print(non_valid_field_indices)
         missing_spaces_rows = []
         missing_spaces_cols = []
         missing_spaces_messages = ''
@@ -90,24 +92,26 @@ class UserProfileAdmin(admin.ModelAdmin):
         non_valid_spaces_cols = []
         non_valid_messages = ''
         col_index = 0
+
         for key in user_profile_dict.keys():
             index_list = []
-            col_type = type(UserProfile._meta.get_field(key))
-            if col_type in model_field_types_dict["int"]:
-                index_list = utils.indices_of_non_int_values(user_profile_dict[key])
-            elif col_type in model_field_types_dict["bool"]:
-                index_list = utils.indices_of_non_boolean_values(user_profile_dict[key])
-            elif col_type in model_field_types_dict["name"] and key != "dealership_name":
-                index_list = utils.indices_of_non_valid_names(user_profile_dict[key])
-            elif col_type in model_field_types_dict["email"]:
-                index_list = utils.indices_of_non_valid_emails(user_profile_dict[key])
+            if col_index not in non_valid_field_indices:
+                col_type = type(UserProfile._meta.get_field(key))
+                if col_type in model_field_types_dict["int"]:
+                    index_list = utils.indices_of_non_int_values(user_profile_dict[key])
+                elif col_type in model_field_types_dict["bool"]:
+                    index_list = utils.indices_of_non_boolean_values(user_profile_dict[key])
+                elif col_type in model_field_types_dict["name"] and key != "dealership_name":
+                    index_list = utils.indices_of_non_valid_names(user_profile_dict[key])
+                elif col_type in model_field_types_dict["email"]:
+                    index_list = utils.indices_of_non_valid_emails(user_profile_dict[key])
 
-            for j in index_list:
-                non_valid_spaces_rows.append(j)
-                non_valid_spaces_cols.append(col_index)
-            if len(index_list) != 0:
-                non_valid_messages += '"' + key + '" fields at row(s): ' + str(
-                    utils.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
+                for j in index_list:
+                    non_valid_spaces_rows.append(j)
+                    non_valid_spaces_cols.append(col_index)
+                if len(index_list) != 0:
+                    non_valid_messages += '"' + key + '" fields at row(s): ' + str(
+                        utils.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
             col_index += 1
 
         unique_cols = ["id", ["user_id", "dealership_id"]]
@@ -144,10 +148,11 @@ class UserProfileAdmin(admin.ModelAdmin):
                         utils.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
             col_index += 1
 
+
         show_table = 'true'
         is_valid = False
 
-        if not (len(non_valid_spaces_rows) or len(missing_spaces_rows) or len(non_unique_rows)):
+        if not (len(non_valid_spaces_rows) or len(missing_spaces_rows) or len(non_unique_rows) or len(non_valid_field_indices)):
             is_valid = True
 
         context = {"text": text,
@@ -161,6 +166,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                    "non_unique_rows": non_unique_rows,
                    "non_unique_cols": non_unique_cols,
                    "non_unique_messages": non_unique_messages,
+                   "non_valid_field_indices": non_valid_field_indices,
                    "show_table": show_table,
                    "is_valid": is_valid,
                    "error": None}

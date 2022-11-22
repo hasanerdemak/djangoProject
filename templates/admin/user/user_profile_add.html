@@ -238,6 +238,15 @@
                 </span>
             {% endif %}
 
+            {% if non_valid_field_indices %}
+                <span class="hovertext" data-hover="{{ non_valid_field_messages }}">
+                    <svg id="second-rect-svg" width="15" height="15">
+                        <rect style="fill:#ffcc00;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                    </svg>
+                    <label for="second-rect-svg">Non-Valid Cells</label>
+                </span>
+            {% endif %}
+
         </div>
         <!-- TABLE DIV -->
         <div id="div-table">
@@ -325,6 +334,12 @@
             var nonUniqueCols = {{ non_unique_cols }};
             if (nonUniqueRows === 'None' || nonUniqueCols === 'None') {
                 return;
+            }
+
+            var nonValidFieldIndices = {{ non_valid_field_indices }}
+            for (let i = 0; i < nonValidFieldIndices.length; i++) {
+                table.rows[0].cells[nonValidFieldIndices[i] + 1].style.backgroundColor = '#ffcc00';
+                table.rows[0].cells[nonValidFieldIndices[i] + 1].contentEditable = true;
             }
 
             for (let i = 0; i < nonUniqueCols.length; i++) {

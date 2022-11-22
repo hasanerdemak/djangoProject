@@ -1,8 +1,9 @@
 import contextlib
 import re
 from collections import Counter
-
 import pandas as pd
+
+from user.models import UserProfile
 
 REGEX_VALID_EMAIL = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
 
@@ -79,3 +80,9 @@ def read_csv(text):
             j += 1
 
     return user_profile_dict
+
+
+def non_valid_field_indices(field_list):
+    field_names = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
+
+    return [index for index, field_name in enumerate(field_list) if field_name not in field_names]
