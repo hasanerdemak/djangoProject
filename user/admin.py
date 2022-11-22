@@ -1,8 +1,7 @@
-import io
 import random
 import string
+from operator import itemgetter
 
-import pandas as pd
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.db import models
@@ -30,7 +29,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         ]
         return my_urls + urls
 
-    def check_buttons(self, request, obj=None, **kwargs):
+    def check_buttons(self, request):
         context = {"text": None,
                    "create_if_not_exist": True,
                    "missing_spaces_rows": None,
@@ -177,28 +176,27 @@ class UserProfileAdmin(admin.ModelAdmin):
         if request.method == "GET":
             return redirect("/admin/user/userprofile")
         else:  # POST
-
             text = request.POST.get("form-text-area")
-            data = io.StringIO(text)
-            user_profile_table = pd.read_csv(data, sep=",")
+
+            user_profile_dict = utils.read_csv(text)
 
             create_if_not_exist = True if (request.POST.get("form-check-box") is not None) else False
 
             non_exist_user_ids, exist_user_ids = self.get_exist_and_non_exist_lists(
-                list(user_profile_table['user_id']), 'user')
+                list(user_profile_dict['user_id']), 'user')
             non_exist_dealership_ids, exist_dealership_ids = self.get_exist_and_non_exist_lists(
-                list(user_profile_table['dealership_id']), 'dealership')
+                list(user_profile_dict['dealership_id']), 'dealership')
             non_exist_user_profile_ids, exist_user_profile_ids = self.get_exist_and_non_exist_lists(
-                list(user_profile_table['id']), 'userprofile')
+                list(user_profile_dict['id']), 'userprofile')
 
             if create_if_not_exist:
                 # CREATE USERS
-                new_users_values_to_create_dict = self.get_obj_values_as_dict(user_profile_table, User(),
+                new_users_values_to_create_dict = self.get_obj_values_as_dict(user_profile_dict, User(),
                                                                               non_exist_user_ids)
                 self.create_objects("user", **new_users_values_to_create_dict)
 
                 # CREATE DEALERSHIPS
-                new_dealerships_values_to_create_dict = self.get_obj_values_as_dict(user_profile_table, Dealership(),
+                new_dealerships_values_to_create_dict = self.get_obj_values_as_dict(user_profile_dict, Dealership(),
                                                                                     non_exist_dealership_ids)
                 self.create_objects("dealership", **new_dealerships_values_to_create_dict)
 
@@ -208,53 +206,55 @@ class UserProfileAdmin(admin.ModelAdmin):
                     set(non_exist_user_profile_ids) & set(exist_user_ids) & set(exist_dealership_ids))
 
             # CREATE USER PROFILES
-            user_profiles_values_to_create_dict = self.get_obj_values_as_dict(user_profile_table, UserProfile(),
+            user_profiles_values_to_create_dict = self.get_obj_values_as_dict(user_profile_dict, UserProfile(),
                                                                               intersection_of_lists)
             self.create_objects("userprofile", **user_profiles_values_to_create_dict)
 
             # Get User values to update then UPDATE USERS
-            users_values_to_update_dict = self.get_obj_values_as_dict(user_profile_table, User(),
+            users_values_to_update_dict = self.get_obj_values_as_dict(user_profile_dict, User(),
                                                                       exist_user_ids)
             self.update_objects("user", **users_values_to_update_dict)
 
             # Get Dealership values to update then UPDATE DEALERSHIPS
-            dealerships_values_to_update_dict = self.get_obj_values_as_dict(user_profile_table, Dealership(),
+            dealerships_values_to_update_dict = self.get_obj_values_as_dict(user_profile_dict, Dealership(),
                                                                             exist_dealership_ids)
             self.update_objects("dealership", **dealerships_values_to_update_dict)
 
             # Get User Profile values to update then UPDATE USER PROFILES
-            user_profiles_values_to_update_dict = self.get_obj_values_as_dict(user_profile_table, UserProfile(),
+            user_profiles_values_to_update_dict = self.get_obj_values_as_dict(user_profile_dict, UserProfile(),
                                                                               exist_user_profile_ids)
             self.update_objects("userprofile", **user_profiles_values_to_update_dict)
 
             return redirect("/admin/user/userprofile")
 
     @staticmethod
-    def get_obj_values_as_dict(user_profile_table_df, model_instance, wanted_rows_indices):
+    def get_obj_values_as_dict(user_profile_dict, model_instance, wanted_rows_indices):
         new_obj_values_dict = dict()
+
+        if len(wanted_rows_indices) == 0:
+            return new_obj_values_dict
+
         for field in model_instance._meta.fields:
-            if field.name in user_profile_table_df.columns.values:
-                new_obj_values_dict[field.name] = user_profile_table_df[field.name].iloc[
-                    wanted_rows_indices].tolist()
+            if field.name in user_profile_dict.keys():
+                new_obj_values_dict[field.name] = list(itemgetter(*wanted_rows_indices)(user_profile_dict[field.name]))
 
         if model_instance._meta.model.__name__ == 'User':
-            new_obj_values_dict["id"] = user_profile_table_df["user_id"][wanted_rows_indices].tolist()
+            new_obj_values_dict["id"] = list(itemgetter(*wanted_rows_indices)(user_profile_dict["user_id"]))
         elif model_instance._meta.model.__name__ == 'Dealership':
-            new_obj_values_dict["id"] = user_profile_table_df["dealership_id"][
-                wanted_rows_indices].tolist()
-            new_obj_values_dict["name"] = user_profile_table_df["dealership_name"][
-                wanted_rows_indices].tolist()
+            new_obj_values_dict["id"] = list(itemgetter(*wanted_rows_indices)(user_profile_dict["dealership_id"]))
+            new_obj_values_dict["name"] = list(itemgetter(*wanted_rows_indices)(user_profile_dict["dealership_name"]))
         elif model_instance._meta.model.__name__ == 'UserProfile':
-            new_obj_values_dict["user_id"] = user_profile_table_df['user_id'][
-                wanted_rows_indices].tolist()
-            new_obj_values_dict['dealership_id'] = user_profile_table_df['dealership_id'][
-                wanted_rows_indices].tolist()
+            new_obj_values_dict["user_id"] = list(itemgetter(*wanted_rows_indices)(user_profile_dict["user_id"]))
+            new_obj_values_dict["dealership_id"] = list(
+                itemgetter(*wanted_rows_indices)(user_profile_dict["dealership_id"]))
         else:
             raise Exception('Unknown Model')
 
         return new_obj_values_dict
 
     def create_objects(self, model_str, **kwargs):
+        if len(kwargs) == 0:
+            return ""
         try:
             if model_str == 'user':
                 kwargs["password"] = [''.join(random.choice(self.characters) for _ in range(8))
@@ -282,6 +282,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     @staticmethod
     def update_objects(model_str, **kwargs):
+        if len(kwargs) == 0:
+            return ""
         try:
             if model_str == 'user':
                 updatable_objects = User.objects.filter(id__in=kwargs["id"])
@@ -293,7 +295,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                 raise Exception('Unknown Model')
 
             exist_objects_indices = utils.reorder_list(list(updatable_objects.values_list("id", flat=True)),
-                                                       kwargs["id"])
+                                                       list(map(int, kwargs["id"])))
             kwargs.pop("id")
 
             for obj, index in zip(updatable_objects, exist_objects_indices):
@@ -312,24 +314,23 @@ class UserProfileAdmin(admin.ModelAdmin):
 
     @staticmethod
     def get_exist_and_non_exist_lists(list_from_input, model_str):
-
         # Get all ids from model objects
         not_exist_id_indices = []
         exist_id_indices = []
         id_list = []
         try:
             if model_str == 'user':
-                id_list = User.objects.values_list('id', flat=True)
+                id_list = list(User.objects.values_list('id', flat=True))
             elif model_str == 'dealership':
-                id_list = Dealership.objects.values_list('id', flat=True)
+                id_list = list(Dealership.objects.values_list('id', flat=True))
             elif model_str == 'userprofile':
-                id_list = UserProfile.objects.values_list('id', flat=True)
+                id_list = list(UserProfile.objects.values_list('id', flat=True))
             else:
                 raise Exception('Unknown Model')
 
             for obj_id in list_from_input:
                 index = list_from_input.index(obj_id)
-                if obj_id in list(id_list):
+                if int(obj_id) in id_list:
                     exist_id_indices.append(index)
                 else:
                     not_exist_id_indices.append(index)

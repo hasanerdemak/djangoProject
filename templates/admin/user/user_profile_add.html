@@ -59,7 +59,7 @@
                 min-height: 150px;
                 max-height: 90vh;
                 margin-left: 58px;
-                padding: 0px;
+                padding: 0;
                 font-size: 16px;
                 line-height: 24px;
                 font-family: 'Ubuntu Mono', monospace;
@@ -153,7 +153,7 @@
     {% endblock %}
 
     <!-- CSV UPLOAD -->
-    <div {% if show_table == "true"%} style="display: none" {% endif %}>
+    <div {% if show_table == "true" %} style="display: none" {% endif %}>
         <input type="file" id="file-upload" oninput="enableUploadButton()"/>
         <button type="button" class="btn btn-primary" id="upload" value="upload"
                 onclick="read(document.getElementById('file-upload'))" disabled>
@@ -166,7 +166,8 @@
         {% csrf_token %}
 
         <!-- Message input -->
-        <div {% if show_table == "true"%} style="display: none" {% else %} class="row d-flex justify-content-center" {% endif %}>
+        <div {% if show_table == "true" %} style="display: none" {% else %}
+                                           class="row d-flex justify-content-center" {% endif %}>
             <div class="custom-textarea">
                 <textarea class="textarea" spellcheck="false" id="form-text-area" name="form-text-area" required
                           {% if is_valid %}readonly{% endif %}>{% if text %}{{ text }}{% endif %}</textarea>
@@ -174,6 +175,9 @@
                 <div class="linenumbers"></div>
             </div>
         </div>
+
+        <a href="" onclick="window.reset()" {% if show_table == "false" %} style="display: none"{% endif %}>
+            < Go back</a>
 
         <!-- Checkbox -->
         <div class="row">
@@ -189,14 +193,15 @@
         <!-- BUTTONS DIV-->
         <div class="row d-flex justify-content-center form-check ">
             <div class="col-6 d-flex justify-content-center">
-                <button type="submit" class="btn btn-primary" name="error-check-button" value="check">
+                <button type="submit" class="btn btn-primary" name="error-check-button" value="check"
+                        onclick="copyTableContentToTextArea()">
                     Error Check
                 </button>
             </div>
 
             <div class="col-6 d-flex justify-content-center">
                 <button type="submit" class="btn btn-primary" name="create-button" value="create"
-                        {% if is_valid %} {% else %} disabled {% endif %}>
+                        onclick="copyTableContentToTextArea()" {% if is_valid %} {% else %} disabled {% endif %}>
                     Create User Profile
                 </button>
             </div>
@@ -214,7 +219,7 @@
             {% if missing_spaces_rows %}
                 <span class="hovertext" data-hover="{{ missing_spaces_messages }}">
                     <svg id="first-rect-svg" width="15" height="15">
-                        <rect style="fill:#ff5454;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                        <rect style="fill:#ff5454;stroke-width:3;stroke:rgb(0,0,0)" height="15" width="15"></rect>
                     </svg>
                     <label for="first-rect-svg">Missing Cells</label>
                 </span>
@@ -223,7 +228,7 @@
             {% if non_valid_spaces_rows %}
                 <span class="hovertext" data-hover="{{ non_valid_messages }}">
                     <svg id="second-rect-svg" width="15" height="15">
-                        <rect style="fill:#ffcc00;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                        <rect style="fill:#ffcc00;stroke-width:3;stroke:rgb(0,0,0)" height="15" width="15"></rect>
                     </svg>
                     <label for="second-rect-svg">Non-Valid Cells</label>
                 </span>
@@ -232,7 +237,7 @@
             {% if non_unique_rows %}
                 <span class="hovertext" data-hover="{{ non_unique_messages }}">
                     <svg id="third-rect-svg" width="15" height="15">
-                        <rect style="fill:#0095ff;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
+                        <rect style="fill:#0095ff;stroke-width:3;stroke:rgb(0,0,0)" height="15" width="15"></rect>
                     </svg>
                     <label for="third-rect-svg">Non-Unique Rows</label>
                 </span>
@@ -371,8 +376,9 @@
 
         }
 
-        function copyTableContentToTextArea(tbl) {
-            newText = ""
+        function copyTableContentToTextArea() {
+            const tbl = document.getElementById('user-profile-table');
+            let newText = "";
             for (let i = 0; i < tbl.rows.length; i++) {
                 for (let j = 1; j < tbl.rows[i].cells.length; j++) {
                     newText += tbl.rows[i].cells[j].innerText + ",";
@@ -385,7 +391,7 @@
         }
 
         function createTable() {
-            var tbl = "<table oninput='copyTableContentToTextArea(this)' class='table table-sm table-responsive table-bordered table-striped table-editable' id='user-profile-table'>";
+            var tbl = "<table class='table table-sm table-responsive table-bordered table-striped table-editable' id='user-profile-table'>";
             var lines = document.getElementById("form-text-area").value.split("\n");
 
             tbl = tbl + "<thead><tr>";
@@ -411,7 +417,7 @@
                 tbl = tbl + "</tr>";
             }
             tbl = tbl + "</tbody></table>";
-            var divTable = document.getElementById('div-table');
+            const divTable = document.getElementById('div-table');
             divTable.innerHTML = tbl;
 
         }
