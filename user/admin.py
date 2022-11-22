@@ -2,7 +2,6 @@ import io
 import random
 import string
 
-import numpy as np
 import pandas as pd
 from django.contrib import admin
 from django.contrib.auth.models import User
@@ -59,43 +58,24 @@ class UserProfileAdmin(admin.ModelAdmin):
     @staticmethod
     def error_check(request):
         create_if_not_exist = True if (request.POST.get("form-check-box") is not None) else False
-        text = request.POST.get("form-text-area")
+        text = request.POST.get("form-text-area").rstrip("\r\n")
 
-        text = text.rstrip("\r\n")
-        data = io.StringIO(text)
-        try:
-            user_profile_table = pd.read_csv(data, sep=",")
-        except pd.errors.ParserError as e:
-            context = {"text": text,
-                       "create_if_not_exist": create_if_not_exist,
-                       "missing_spaces_rows": None,
-                       "missing_spaces_cols": None,
-                       "missing_spaces_messages": None,
-                       "non_valid_spaces_rows": None,
-                       "non_valid_spaces_cols": None,
-                       "non_valid_messages": None,
-                       "non_unique_rows": None,
-                       "non_unique_cols": None,
-                       "show_table": 'false',
-                       "is_valid": False,
-                       "error": str(e)}
-            return render(request, "user/user_profile_add.html", context)
+        user_profile_dict = utils.read_csv(text)
 
-        missing_spaces_rows = np.where(pd.isnull(user_profile_table))[0].tolist()
-        missing_spaces_cols = np.where(pd.isnull(user_profile_table))[1].tolist()
-
+        missing_spaces_rows = []
+        missing_spaces_cols = []
         missing_spaces_messages = ''
-        if len(missing_spaces_cols) != 0:
-            missing_spaces_cols_unique_elements = [*set(missing_spaces_cols)]  # remove duplicates
-            for value in missing_spaces_cols_unique_elements:
-                missing_spaces_messages += '"' + user_profile_table.iloc[:, value].name + '" fields at row(s): '
-                value_indices = [i for i, x in enumerate(missing_spaces_cols) if x == value]
+        col_index = 0
+        for key in user_profile_dict.keys():
+            index_list = [index for index, value in enumerate(user_profile_dict[key]) if not value or value == ""]
 
-                for i in value_indices:
-                    missing_spaces_messages += str(missing_spaces_rows[i] + 1) + ', '
-
-                missing_spaces_messages = missing_spaces_messages[:len(missing_spaces_messages) - 2]
-                missing_spaces_messages += ' is/are required. \r\n'
+            for j in index_list:
+                missing_spaces_rows.append(j)
+                missing_spaces_cols.append(col_index)
+            if len(index_list) != 0:
+                missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
+                    utils.increase_list_values(index_list, 1)) + ' is/are required. \r\n'
+            col_index += 1
 
         model_field_types_dict = {"int": [models.AutoField, models.BigAutoField,
                                           models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
@@ -109,39 +89,46 @@ class UserProfileAdmin(admin.ModelAdmin):
         non_valid_spaces_rows = []
         non_valid_spaces_cols = []
         non_valid_messages = ''
-        for col in user_profile_table.columns:
+        col_index = 0
+        for key in user_profile_dict.keys():
             index_list = []
-            col_type = type(UserProfile._meta.get_field(col))
+            col_type = type(UserProfile._meta.get_field(key))
             if col_type in model_field_types_dict["int"]:
-                index_list = utils.indices_of_non_int_values(user_profile_table[col].tolist())
+                index_list = utils.indices_of_non_int_values(user_profile_dict[key])
             elif col_type in model_field_types_dict["bool"]:
-                index_list = utils.indices_of_non_boolean_values(user_profile_table[col].tolist())
-            elif col_type in model_field_types_dict["name"] and col != "dealership_name":
-                index_list = utils.indices_of_non_valid_names(user_profile_table[col].tolist())
+                index_list = utils.indices_of_non_boolean_values(user_profile_dict[key])
+            elif col_type in model_field_types_dict["name"] and key != "dealership_name":
+                index_list = utils.indices_of_non_valid_names(user_profile_dict[key])
             elif col_type in model_field_types_dict["email"]:
-                index_list = utils.indices_of_non_valid_emails(user_profile_table[col].tolist())
+                index_list = utils.indices_of_non_valid_emails(user_profile_dict[key])
 
-            i = user_profile_table.columns.get_loc(col)
             for j in index_list:
                 non_valid_spaces_rows.append(j)
-                non_valid_spaces_cols.append(i)
+                non_valid_spaces_cols.append(col_index)
             if len(index_list) != 0:
-                non_valid_messages += '"' + user_profile_table[col].name + '" fields at row(s): ' + str(
+                non_valid_messages += '"' + key + '" fields at row(s): ' + str(
                     utils.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
+            col_index += 1
 
         unique_cols = ["id", ["user_id", "dealership_id"]]
         non_unique_rows = []
         non_unique_cols = []
         non_unique_messages = ''
+        col_index = 0
         for col in unique_cols:
-            index_list = utils.indices_of_non_unique_cells(user_profile_table[col])
+            if isinstance(col, list):
+                list_to_give = utils.merge_lists(*[user_profile_dict[col[i]] for i in range(len(col))])
+            else:
+                list_to_give = user_profile_dict[col]
+            index_list = utils.indices_of_non_unique_cells(list_to_give)
+
             if len(index_list) != 0:
                 if isinstance(col, list):
-                    for j in index_list:
-                        for c in col:
-                            i = user_profile_table.columns.get_loc(c)
+                    for _ in col:
+                        for j in index_list:
                             non_unique_rows.append(j)
-                            non_unique_cols.append(i)
+                            non_unique_cols.append(col_index)
+                        col_index += 1
 
                     non_unique_messages += str(col) + ' pairs at row(s): '
                     for index in index_list:
@@ -150,12 +137,12 @@ class UserProfileAdmin(admin.ModelAdmin):
                     non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
                     non_unique_messages += ' must be unique. \r\n'
                 else:
-                    i = user_profile_table.columns.get_loc(col)
                     for j in index_list:
                         non_unique_rows.append(j)
-                        non_unique_cols.append(i)
-                    non_unique_messages += '"' + user_profile_table[col].name + '" fields at row(s): ' + str(
+                        non_unique_cols.append(col_index)
+                    non_unique_messages += '"' + col + '" fields at row(s): ' + str(
                         utils.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
+            col_index += 1
 
         show_table = 'true'
         is_valid = False
@@ -199,108 +186,91 @@ class UserProfileAdmin(admin.ModelAdmin):
                 list(user_profile_table['id']), 'userprofile')
 
             if create_if_not_exist:
-                new_users_values_to_create_dict = dict()
-                new_users_values_to_create_dict["id"] = user_profile_table["user_id"][non_exist_user_ids].tolist()
-                for field in User._meta.fields:
-                    if field.name in user_profile_table.columns.values and field.name != "id":
-                        new_users_values_to_create_dict[field.name] = user_profile_table[field.name].iloc[
-                            non_exist_user_ids].tolist()
+                # CREATE USERS
+                new_users_values_to_create_dict = self.get_obj_values_as_dict(user_profile_table, User(),
+                                                                              non_exist_user_ids)
                 self.create_objects("user", **new_users_values_to_create_dict)
 
-                new_dealerships_values_to_create_dict = dict()
-                new_dealerships_values_to_create_dict["id"] = user_profile_table["dealership_id"][
-                    non_exist_dealership_ids].tolist()
-                new_dealerships_values_to_create_dict["name"] = user_profile_table["dealership_name"][
-                    non_exist_dealership_ids].tolist()
-                for field in Dealership._meta.fields:
-                    if field.name in user_profile_table.columns.values and field.name != "id" and field.name != "name":
-                        new_dealerships_values_to_create_dict[field.name] = user_profile_table[field.name].iloc[
-                            non_exist_dealership_ids].tolist()
+                # CREATE DEALERSHIPS
+                new_dealerships_values_to_create_dict = self.get_obj_values_as_dict(user_profile_table, Dealership(),
+                                                                                    non_exist_dealership_ids)
                 self.create_objects("dealership", **new_dealerships_values_to_create_dict)
 
-            # Get User values to update
-            users_values_to_update_dict = dict()
-            users_values_to_update_dict["id"] = user_profile_table["user_id"][exist_user_ids].tolist()
-            for field in User._meta.fields:
-                if field.name in user_profile_table.columns.values and field.name != "id":
-                    users_values_to_update_dict[field.name] = user_profile_table[field.name].iloc[
-                        exist_user_ids].tolist()
-            self.update_objects("user", **users_values_to_update_dict)
-
-            # Update Dealerships
-            dealerships_values_to_update_dict = dict()
-            dealerships_values_to_update_dict["id"] = user_profile_table["dealership_id"][exist_dealership_ids].tolist()
-            dealerships_values_to_update_dict["name"] = user_profile_table["dealership_name"][
-                exist_dealership_ids].tolist()
-            for field in Dealership._meta.fields:
-                if field.name in user_profile_table.columns.values and field.name != "id" and field.name != "name":
-                    dealerships_values_to_update_dict[field.name] = user_profile_table[field.name].iloc[
-                        exist_dealership_ids].tolist()
-            self.update_objects("dealership", **dealerships_values_to_update_dict)
-
-            # Create Userprofiles
-            user_profiles_values_to_create_dict = dict()
-            if create_if_not_exist:
                 intersection_of_lists = non_exist_user_profile_ids
-                user_profiles_values_to_create_dict["user_id"] = user_profile_table['user_id'][
-                    intersection_of_lists].tolist()
-                user_profiles_values_to_create_dict['dealership_id'] = user_profile_table['dealership_id'][
-                    intersection_of_lists].tolist()
             else:  # Send only exist users and dealerships
                 intersection_of_lists = list(
                     set(non_exist_user_profile_ids) & set(exist_user_ids) & set(exist_dealership_ids))
-                user_profiles_values_to_create_dict["user_id"] = user_profile_table['user_id'][
-                    intersection_of_lists].tolist()
-                user_profiles_values_to_create_dict['dealership_id'] = user_profile_table['dealership_id'][
-                    intersection_of_lists].tolist()
 
-            for field in UserProfile._meta.fields:
-                if field.name in user_profile_table.columns.values and field.name != "user" \
-                        and field.name != "dealership":
-                    user_profiles_values_to_create_dict[field.name] = user_profile_table[field.name].iloc[
-                        intersection_of_lists].tolist()
+            # CREATE USER PROFILES
+            user_profiles_values_to_create_dict = self.get_obj_values_as_dict(user_profile_table, UserProfile(),
+                                                                              intersection_of_lists)
             self.create_objects("userprofile", **user_profiles_values_to_create_dict)
 
-            user_profiles_values_to_update_dict = dict()
-            user_profiles_values_to_update_dict["user_id"] = user_profile_table["user_id"][
-                exist_user_profile_ids].tolist()
-            user_profiles_values_to_update_dict["dealership_id"] = user_profile_table["dealership_id"][
-                exist_user_profile_ids].tolist()
-            for field in UserProfile._meta.fields:
-                if field.name in user_profile_table.columns.values and field.name != "user" \
-                        and field.name != "dealership":
-                    user_profiles_values_to_update_dict[field.name] = user_profile_table[field.name].iloc[
-                        exist_user_profile_ids].tolist()
+            # Get User values to update then UPDATE USERS
+            users_values_to_update_dict = self.get_obj_values_as_dict(user_profile_table, User(),
+                                                                      exist_user_ids)
+            self.update_objects("user", **users_values_to_update_dict)
+
+            # Get Dealership values to update then UPDATE DEALERSHIPS
+            dealerships_values_to_update_dict = self.get_obj_values_as_dict(user_profile_table, Dealership(),
+                                                                            exist_dealership_ids)
+            self.update_objects("dealership", **dealerships_values_to_update_dict)
+
+            # Get User Profile values to update then UPDATE USER PROFILES
+            user_profiles_values_to_update_dict = self.get_obj_values_as_dict(user_profile_table, UserProfile(),
+                                                                              exist_user_profile_ids)
             self.update_objects("userprofile", **user_profiles_values_to_update_dict)
 
             return redirect("/admin/user/userprofile")
 
-    def create_objects(self, model_str, **kwargs):
-        if model_str == 'user':
-            kwargs["password"] = [''.join(random.choice(self.characters) for _ in range(8))
-                                  for _ in range(len(kwargs["id"]))]
-            kwargs["username"] = [kwargs["first_name"][user_index] +
-                                  kwargs["last_name"][user_index]
-                                  for user_index in range(len(kwargs["id"]))]
-        elif model_str == 'dealership':
-            kwargs["group_id"] = [1 for _ in range(len(kwargs["id"]))]
-        elif model_str == 'userprofile':
-            pass
+    @staticmethod
+    def get_obj_values_as_dict(user_profile_table_df, model_instance, wanted_rows_indices):
+        new_obj_values_dict = dict()
+        for field in model_instance._meta.fields:
+            if field.name in user_profile_table_df.columns.values:
+                new_obj_values_dict[field.name] = user_profile_table_df[field.name].iloc[
+                    wanted_rows_indices].tolist()
+
+        if model_instance._meta.model.__name__ == 'User':
+            new_obj_values_dict["id"] = user_profile_table_df["user_id"][wanted_rows_indices].tolist()
+        elif model_instance._meta.model.__name__ == 'Dealership':
+            new_obj_values_dict["id"] = user_profile_table_df["dealership_id"][
+                wanted_rows_indices].tolist()
+            new_obj_values_dict["name"] = user_profile_table_df["dealership_name"][
+                wanted_rows_indices].tolist()
+        elif model_instance._meta.model.__name__ == 'UserProfile':
+            new_obj_values_dict["user_id"] = user_profile_table_df['user_id'][
+                wanted_rows_indices].tolist()
+            new_obj_values_dict['dealership_id'] = user_profile_table_df['dealership_id'][
+                wanted_rows_indices].tolist()
         else:
             raise Exception('Unknown Model')
 
+        return new_obj_values_dict
+
+    def create_objects(self, model_str, **kwargs):
         try:
             if model_str == 'user':
+                kwargs["password"] = [''.join(random.choice(self.characters) for _ in range(8))
+                                      for _ in range(len(kwargs["id"]))]
+                kwargs["username"] = [kwargs["first_name"][user_index] +
+                                      kwargs["last_name"][user_index]
+                                      for user_index in range(len(kwargs["id"]))]
+
                 User.objects.bulk_create([User(**{key: values[i] for key, values in kwargs.items()})
                                           for i in range(len(kwargs["id"]))])
             elif model_str == 'dealership':
+                kwargs["group_id"] = [1 for _ in range(len(kwargs["id"]))]
+
                 Dealership.objects.bulk_create([Dealership(**{key: values[i] for key, values in kwargs.items()})
                                                 for i in range(len(kwargs["id"]))])
             elif model_str == 'userprofile':
                 UserProfile.objects.bulk_create([UserProfile(**{key: values[i] for key, values in kwargs.items()})
                                                  for i in range(len(kwargs["id"]))])
+            else:
+                raise Exception('Unknown Model')
         except Exception as e:
-            print(f"{e} Happened When Creating User")
+            print(f"{e} Happened When Creating {model_str}")
 
         return ""
 

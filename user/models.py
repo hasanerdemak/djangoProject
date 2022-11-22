@@ -4,8 +4,8 @@ from dealership.models import Dealership
 
 
 class UserProfile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.DO_NOTHING, verbose_name="User", related_name="user_profiles")
-    dealership = models.ForeignKey(Dealership, on_delete=models.DO_NOTHING, verbose_name="Dealership",
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User", related_name="user_profiles")
+    dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE, verbose_name="Dealership",
                                    related_name="user_profiles")
     dealership_name = models.CharField(max_length=50, verbose_name="Dealership Name", null=False, blank=False)
     is_active = models.BooleanField(verbose_name="Is Active", default=True)

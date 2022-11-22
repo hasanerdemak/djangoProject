@@ -153,19 +153,20 @@
     {% endblock %}
 
     <!-- CSV UPLOAD -->
-    <input type="file" id="file-upload" oninput="enableUploadButton()"/>
-    <button type="button" class="btn btn-primary" id="upload" value="upload"
-            onclick="read(document.getElementById('file-upload'))" disabled>
-        Upload
-    </button>
-    <hr/>
-
+    <div {% if show_table == "true"%} style="display: none" {% endif %}>
+        <input type="file" id="file-upload" oninput="enableUploadButton()"/>
+        <button type="button" class="btn btn-primary" id="upload" value="upload"
+                onclick="read(document.getElementById('file-upload'))" disabled>
+            Upload
+        </button>
+        <hr/>
+    </div>
 
     <form action="" method="POST">
         {% csrf_token %}
 
         <!-- Message input -->
-        <div class="row d-flex justify-content-center">
+        <div {% if show_table == "true"%} style="display: none" {% else %} class="row d-flex justify-content-center" {% endif %}>
             <div class="custom-textarea">
                 <textarea class="textarea" spellcheck="false" id="form-text-area" name="form-text-area" required
                           {% if is_valid %}readonly{% endif %}>{% if text %}{{ text }}{% endif %}</textarea>
@@ -178,7 +179,7 @@
         <div class="row">
             <div class="form-check col-12 d-flex justify-content-center mb-4">
                 <input class="form-check-input me-2" type="checkbox" value="" name="form-check-box" id="form-check-box"
-                       {% if create_if_not_exist %} checked {% endif %}/>
+                        {% if create_if_not_exist %} checked {% endif %}/>
                 <label class="form-check-label" for="form-check-box">
                     Create Objects If Not Exist In The Database
                 </label>
@@ -202,11 +203,14 @@
         </div>
     </form>
 
-    <div style="margin-top: 10px">
+    <div style="margin-top: 20px">
         <p style="color: #ff0000; text-indent: 30px; text-transform: uppercase;">
             {% if error %}{{ error }}{% endif %}</p> <!--class="form-control"-->
         <!--Error Colors-->
         <div>
+            {% if missing_spaces_rows or non_valid_spaces_rows or non_unique_rows %}
+                <p style="font-weight: bold; color: #b00020">Please Click On The Wrong Cells To Edit The Text</p>
+            {% endif %}
             {% if missing_spaces_rows %}
                 <span class="hovertext" data-hover="{{ missing_spaces_messages }}">
                     <svg id="first-rect-svg" width="15" height="15">
@@ -306,7 +310,7 @@
         window.onload = function () {
             try {
                 if (Boolean({{ show_table }})) {
-                    myFunction();
+                    createTable();
                     paintWrongSpaces();
                 }
             } catch (e) {
@@ -317,16 +321,6 @@
         function paintWrongSpaces() {
             var table = document.getElementById('user-profile-table');
 
-            var missingSpacesRows = {{ missing_spaces_rows }};
-            var missingSpacesCols = {{ missing_spaces_cols }};
-            if (missingSpacesRows === 'None' || missingSpacesCols === 'None') {
-                return;
-            }
-
-            for (let i = 0; i < missingSpacesCols.length; i++) {
-                table.rows[missingSpacesRows[i] + 1].cells[missingSpacesCols[i] + 1].style.backgroundColor = '#ff5454';
-            }
-
             var nonUniqueRows = {{ non_unique_rows }};
             var nonUniqueCols = {{ non_unique_cols }};
             if (nonUniqueRows === 'None' || nonUniqueCols === 'None') {
@@ -335,6 +329,7 @@
 
             for (let i = 0; i < nonUniqueCols.length; i++) {
                 table.rows[nonUniqueRows[i] + 1].cells[nonUniqueCols[i] + 1].style.backgroundColor = '#0095ff';
+                table.rows[nonUniqueRows[i] + 1].cells[nonUniqueCols[i] + 1].contentEditable = true;
             }
 
             var nonValidSpacesRows = {{ non_valid_spaces_rows }};
@@ -345,12 +340,37 @@
 
             for (let i = 0; i < nonValidSpacesCols.length; i++) {
                 table.rows[nonValidSpacesRows[i] + 1].cells[nonValidSpacesCols[i] + 1].style.backgroundColor = '#ffcc00';
+                table.rows[nonValidSpacesRows[i] + 1].cells[nonValidSpacesCols[i] + 1].contentEditable = true;
+            }
+
+            var missingSpacesRows = {{ missing_spaces_rows }};
+            var missingSpacesCols = {{ missing_spaces_cols }};
+            if (missingSpacesRows === 'None' || missingSpacesCols === 'None') {
+                return;
+            }
+
+            for (let i = 0; i < missingSpacesCols.length; i++) {
+                table.rows[missingSpacesRows[i] + 1].cells[missingSpacesCols[i] + 1].style.backgroundColor = '#ff5454';
+                table.rows[missingSpacesRows[i] + 1].cells[missingSpacesCols[i] + 1].contentEditable = true;
             }
 
         }
 
-        function myFunction() {
-            var tbl = "<table class='table table-sm table-responsive table-bordered table-striped table-editable' id='user-profile-table'>";
+        function copyTableContentToTextArea(tbl) {
+            newText = ""
+            for (let i = 0; i < tbl.rows.length; i++) {
+                for (let j = 1; j < tbl.rows[i].cells.length; j++) {
+                    newText += tbl.rows[i].cells[j].innerText + ",";
+                }
+                newText = newText.slice(0, -1);
+                newText += '\r\n';
+            }
+
+            document.getElementById('form-text-area').innerHTML = newText;
+        }
+
+        function createTable() {
+            var tbl = "<table oninput='copyTableContentToTextArea(this)' class='table table-sm table-responsive table-bordered table-striped table-editable' id='user-profile-table'>";
             var lines = document.getElementById("form-text-area").value.split("\n");
 
             tbl = tbl + "<thead><tr>";
