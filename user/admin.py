@@ -370,13 +370,6 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         return not_exist_id_indices, exist_id_indices
 
-    @staticmethod
-    def get_user_profile_from_user_and_dealership_id(user_id_list, dealership_id_list):
-
-        query = reduce(operator.or_, (Q(user_id=u_id, dealership_id=d_id) for u_id, d_id in
-                                      zip(user_id_list, dealership_id_list)))
-
-        return
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
