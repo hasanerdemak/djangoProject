@@ -56,7 +56,7 @@
         </div>
         <hr>
         <!-- BUTTONS DIV-->
-        <div class="d-flex justify-content-center">
+        <div class="d-flex justify-content-end mt-3">
             <button type="submit" class="btn btn-primary" name="get-fields-button" value="get-fields">
                 Get Fields
             </button>
@@ -66,11 +66,18 @@
         {% if are_fields_taken %}
             <div style="margin-top: 20px">
                 {% csrf_token %}
-                {{ form.as_p }}
+                <table class="table-borderless" style="width: 40%;">
+                    {% for field in form %}
+                        <tr>
+                            <td style="width: 30% ;font-size: medium; vertical-align: center">{{ field.label_tag }}</td>
+                            <td style="width: 70%"> {{ field }}</td>
+                        </tr>
+                    {% endfor %}
+                </table>
 
                 <hr>
 
-                <div class="d-flex justify-content-center">
+                <div class="d-flex justify-content-end mt-3">
                     <button type="submit" class="btn btn-primary" name="update-button" value="update"
                             {% if is_valid %} {% else %}  {% endif %}>
                         Update Edited Fields

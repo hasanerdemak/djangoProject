@@ -39,7 +39,7 @@ class DealershipAdmin(admin.ModelAdmin):
         ]
         return my_urls + urls
 
-    def check_buttons(self, request, obj=None, **kwargs):
+    def check_buttons(self, request):
         get_field_button = request.POST.get("get-fields-button")
         update_button = request.POST.get("update-button")
 

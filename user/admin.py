@@ -2,7 +2,6 @@ import operator
 import random
 import string
 from functools import reduce
-from operator import itemgetter
 
 from django.contrib import admin
 from django.contrib.auth.models import User
@@ -151,7 +150,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                         for j in index_list:
                             non_unique_rows.append(j)
                             non_unique_cols.append(col_index)
-                        non_unique_messages += '"' + col + '" fields at row(s): ' + str(
+                        non_unique_messages += '"' + str(col) + '" fields at row(s): ' + str(
                             utils.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
                 col_index += 1
 
@@ -257,17 +256,16 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         for field in model_instance._meta.fields:
             if field.name in user_profile_dict.keys():
-                new_obj_values_dict[field.name] = list(itemgetter(*wanted_rows_indices)(user_profile_dict[field.name]))
+                new_obj_values_dict[field.name] = [user_profile_dict[field.name][i] for i in wanted_rows_indices]
 
         if model_instance._meta.model.__name__ == 'User':
-            new_obj_values_dict["id"] = list(itemgetter(*wanted_rows_indices)(user_profile_dict["user_id"]))
+            new_obj_values_dict["id"] = [user_profile_dict["user_id"][i] for i in wanted_rows_indices]
         elif model_instance._meta.model.__name__ == 'Dealership':
-            new_obj_values_dict["id"] = list(itemgetter(*wanted_rows_indices)(user_profile_dict["dealership_id"]))
-            new_obj_values_dict["name"] = list(itemgetter(*wanted_rows_indices)(user_profile_dict["dealership_name"]))
+            new_obj_values_dict["id"] = [user_profile_dict["dealership_id"][i] for i in wanted_rows_indices]
+            new_obj_values_dict["name"] = [user_profile_dict["dealership_name"][i] for i in wanted_rows_indices]
         elif model_instance._meta.model.__name__ == 'UserProfile':
-            new_obj_values_dict["user_id"] = list(itemgetter(*wanted_rows_indices)(user_profile_dict["user_id"]))
-            new_obj_values_dict["dealership_id"] = list(
-                itemgetter(*wanted_rows_indices)(user_profile_dict["dealership_id"]))
+            new_obj_values_dict["user_id"] = [user_profile_dict["user_id"][i] for i in wanted_rows_indices]
+            new_obj_values_dict["dealership_id"] = [user_profile_dict["dealership_id"][i] for i in wanted_rows_indices]
         else:
             raise Exception('Unknown Model')
 
@@ -369,7 +367,6 @@ class UserProfileAdmin(admin.ModelAdmin):
             print(f"Exception Happened for {id_list} | {e}")
 
         return not_exist_id_indices, exist_id_indices
-
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
