@@ -42,6 +42,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                    "non_valid_messages": None,
                    "non_unique_rows": None,
                    "non_unique_cols": None,
+                   "non_valid_field_indices": None,
                    "show_table": 'false',
                    "is_valid": False,
                    "error": None}

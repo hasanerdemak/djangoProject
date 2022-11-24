@@ -339,8 +339,11 @@
                 return;
             }
 
-            var nonValidFieldIndices =
-            {{ non_valid_field_indices }}
+            var nonValidFieldIndices = {{ non_valid_field_indices }};
+            if (nonValidFieldIndices === 'None') {
+                return;
+            }
+
             for (let i = 0; i < nonValidFieldIndices.length; i++) {
                 table.rows[0].cells[nonValidFieldIndices[i] + 1].style.backgroundColor = '#ffcc00';
                 table.rows[0].cells[nonValidFieldIndices[i] + 1].contentEditable = true;
