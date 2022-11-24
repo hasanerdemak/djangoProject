@@ -115,6 +115,13 @@
             required: true
         });
 
+        window.onload = function () {
+            const clearButton = document.getElementById("id_group");
+            if (clearButton != null) {
+                document.getElementById("id_group").firstChild.childNodes.item(3).childNodes.item(5).click();
+            }
+        }
+
     </script>
 
 
