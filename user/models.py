@@ -7,11 +7,26 @@ class UserProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User", related_name="user_profiles")
     dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE, verbose_name="Dealership",
                                    related_name="user_profiles")
-    dealership_name = models.CharField(max_length=50, verbose_name="Dealership Name", null=False, blank=False)
-    is_active = models.BooleanField(verbose_name="Is Active", default=True)
-    first_name = models.CharField(max_length=50, verbose_name="First Name", null=False, blank=False)
-    last_name = models.CharField(max_length=50, verbose_name="Last Name", null=False, blank=False)
-    email = models.EmailField(max_length=50, verbose_name="Email", null=False, blank=False)
+
+    @property
+    def dealership_name(self):
+        return self.dealership.name
+
+    @property
+    def is_active(self):
+        return self.user.is_active
+
+    @property
+    def first_name(self):
+        return self.user.first_name
+
+    @property
+    def last_name(self):
+        return self.user.last_name
+
+    @property
+    def email(self) -> models.EmailField:
+        return self.user.email
 
     class Meta:
         unique_together = (('user', 'dealership'),)

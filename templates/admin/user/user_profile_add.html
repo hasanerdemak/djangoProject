@@ -331,15 +331,15 @@
         }
 
         function paintWrongSpaces() {
-            var table = document.getElementById('user-profile-table');
+            const table = document.getElementById('user-profile-table');
 
-            var nonUniqueRows = {{ non_unique_rows }};
-            var nonUniqueCols = {{ non_unique_cols }};
+            let nonUniqueRows = {{ non_unique_rows }};
+            let nonUniqueCols = {{ non_unique_cols }};
             if (nonUniqueRows === 'None' || nonUniqueCols === 'None') {
                 return;
             }
 
-            var nonValidFieldIndices = {{ non_valid_field_indices }};
+            let nonValidFieldIndices = {{ non_valid_field_indices }};
             if (nonValidFieldIndices === 'None') {
                 return;
             }
@@ -354,8 +354,8 @@
                 table.rows[nonUniqueRows[i] + 1].cells[nonUniqueCols[i] + 1].contentEditable = true;
             }
 
-            var nonValidSpacesRows = {{ non_valid_spaces_rows }};
-            var nonValidSpacesCols = {{ non_valid_spaces_cols }};
+            let nonValidSpacesRows = {{ non_valid_spaces_rows }};
+            let nonValidSpacesCols = {{ non_valid_spaces_cols }};
             if (nonValidSpacesRows === 'None' || nonValidSpacesCols === 'None') {
                 return;
             }
@@ -365,8 +365,8 @@
                 table.rows[nonValidSpacesRows[i] + 1].cells[nonValidSpacesCols[i] + 1].contentEditable = true;
             }
 
-            var missingSpacesRows = {{ missing_spaces_rows }};
-            var missingSpacesCols = {{ missing_spaces_cols }};
+            let missingSpacesRows = {{ missing_spaces_rows }};
+            let missingSpacesCols = {{ missing_spaces_cols }};
             if (missingSpacesRows === 'None' || missingSpacesCols === 'None') {
                 return;
             }
@@ -393,23 +393,24 @@
         }
 
         function createTable() {
-            var tbl = "<table class='table table-sm table-responsive table-bordered table-striped table-editable' id='user-profile-table'>";
-            var lines = document.getElementById("form-text-area").value.split("\n");
+            let j;
+            let tbl = "<table class='table' id='user-profile-table'>";
+            const lines = document.getElementById("form-text-area").value.split("\n");
 
             tbl = tbl + "<thead><tr>";
             tbl = tbl + "<td>" + "#" + "</td>";
-            var headers = lines[0].split(",");
-            for (var j = 0; j < headers.length; j++) {
+            const headers = lines[0].split(",");
+            for (j = 0; j < headers.length; j++) {
                 tbl = tbl + "<td>" + headers[j] + "</td>";
             }
             tbl = tbl + "</tr></thead>";
 
             tbl = tbl + "<tbody>"
-            for (var i = 1; i < lines.length; i++) {
+            for (let i = 1; i < lines.length; i++) {
                 tbl = tbl + "<tr>" + "<th scope=" + '"row">' + i + "</th>"
 
-                var items = lines[i].split(",");
-                for (var j = 0; j < headers.length; j++) {
+                const items = lines[i].split(",");
+                for (j = 0; j < headers.length; j++) {
                     if (items.length > j) {
                         tbl = tbl + "<td>" + items[j] + "</td>";
                     } else {

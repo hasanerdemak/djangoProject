@@ -19,6 +19,8 @@ from .models import UserProfile
 class UserProfileAdmin(admin.ModelAdmin):
     change_list_template = "user/my_user_profile_change_list.html"
     list_display = ["user", "dealership"]
+    readonly_fields = ["dealership_name", "is_active", "first_name", "last_name", "email"]
+    fields = ["user", "dealership", "dealership_name", "is_active", "first_name", "last_name", "email"]
     characters = string.ascii_letters + string.digits + string.punctuation
 
     class Meta:
@@ -63,7 +65,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         text = request.POST.get("form-text-area").rstrip("\r\n")
 
-        user_profile_dict = utils.read_csv(text)
+        user_profile_dict = utils.read_csv_as_dict(text)
 
         missing_spaces_rows = []
         missing_spaces_cols = []
@@ -106,7 +108,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             for key in user_profile_dict.keys():
                 index_list = []
                 if col_index not in non_valid_field_indices:
-                    col_type = type(UserProfile._meta.get_field(key))
+                    col_type = utils.get_col_type(key)
                     if col_type in model_field_types_dict["int"]:
                         index_list = utils.indices_of_non_int_values(user_profile_dict[key])
                     elif col_type in model_field_types_dict["bool"]:
@@ -186,7 +188,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         else:  # POST
             text = request.POST.get("form-text-area").rstrip("\r\n")
 
-            user_profile_dict = utils.read_csv(text)
+            user_profile_dict = utils.read_csv_as_dict(text)
 
             int_field_types_list = [models.AutoField, models.BigAutoField,
                                     models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
@@ -195,7 +197,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                                     models.ForeignKey]
 
             for key in user_profile_dict.keys():
-                col_type = type(UserProfile._meta.get_field(key))
+                col_type = utils.get_col_type(key)
                 if col_type in int_field_types_list:
                     user_profile_dict[key] = list(map(int, user_profile_dict[key]))
 
@@ -240,16 +242,11 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                                             exist_dealership_id_indices)
             self.update_objects("dealership", **dealerships_values_to_update_dict)
 
-            # Get User Profile values to update then UPDATE USER PROFILES
-            user_profiles_values_to_update_dict = self.get_obj_values_as_dict(user_profile_dict, UserProfile(),
-                                                                              exist_user_profile_id_indices)
-
-            self.update_objects("userprofile", **user_profiles_values_to_update_dict)
-
             return redirect("/admin/user/userprofile")
 
     @staticmethod
-    def get_obj_values_as_dict(user_profile_dict, model_instance, wanted_rows_indices):
+    def get_obj_values_as_dict(user_profile_dict: dict, model_instance: models.Model,
+                               wanted_rows_indices: list) -> dict:
         new_obj_values_dict = dict()
 
         if len(wanted_rows_indices) == 0:
@@ -301,7 +298,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         return ""
 
     @staticmethod
-    def update_objects(model_str, **kwargs):
+    def update_objects(model_str: str, **kwargs):
         if len(kwargs) == 0:
             return ""
         try:
@@ -342,7 +339,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         return ""
 
     @staticmethod
-    def get_exist_and_non_exist_lists(list_from_input, model_str):
+    def get_exist_and_non_exist_lists(list_from_input: list, model_str: str) -> tuple:
         # Get all ids from model objects
         not_exist_id_indices = []
         exist_id_indices = []

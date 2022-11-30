@@ -8,7 +8,7 @@ from .forms import DealershipForm
 from .models import Dealership, DealershipGroup
 
 
-def create_associate_category(selected_categories, dealerships_ids_list):
+def create_associate_category(selected_categories: list, dealerships_ids_list: list):
     try:
         AssociatedCategory.objects.filter(dealership_id__in=dealerships_ids_list).delete()
         AssociatedCategory.objects.bulk_create(
