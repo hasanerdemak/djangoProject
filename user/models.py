@@ -28,6 +28,9 @@ class UserProfile(models.Model):
     def email(self) -> models.EmailField:
         return self.user.email
 
+    def property_names(self):
+        return self._meta._property_names
+
     class Meta:
         unique_together = (('user', 'dealership'),)
 
