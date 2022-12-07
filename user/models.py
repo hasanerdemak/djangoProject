@@ -29,7 +29,7 @@ class UserProfile(models.Model):
         return self._meta._property_names
 
     class Meta:
-        unique_together = (('user', 'dealership'),)
+        unique_together = ('user', 'dealership')
 
     def __str__(self):
         return f"{self.user.username} - {self.dealership.name}"
