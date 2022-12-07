@@ -15,6 +15,15 @@ from dealership.models import Dealership
 from user import utils
 from .models import UserProfile
 
+MODEL_FIELD_TYPES = {"int": (models.AutoField, models.BigAutoField,
+                             models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
+                             models.PositiveIntegerField, models.PositiveBigIntegerField,
+                             models.PositiveSmallIntegerField,
+                             models.ForeignKey),
+                     "bool": (models.BooleanField, models.NullBooleanField),
+                     "name": [models.CharField],
+                     "email": [models.EmailField]}
+
 
 class UserProfileAdmin(admin.ModelAdmin):
     change_list_template = "user/my_user_profile_change_list.html"
@@ -94,15 +103,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                     missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
                         utils.increase_list_values(index_list, 1)) + ' is/are required. \r\n'
                 col_index += 1
-
-            model_field_types_dict = {"int": [models.AutoField, models.BigAutoField,
-                                              models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
-                                              models.PositiveIntegerField, models.PositiveBigIntegerField,
-                                              models.PositiveSmallIntegerField,
-                                              models.ForeignKey],
-                                      "bool": [models.BooleanField, models.NullBooleanField],
-                                      "name": [models.CharField],
-                                      "email": [models.EmailField]}
+            # todo Make constant
 
             # NON VALID CHECK
             col_index = 0
@@ -110,13 +111,13 @@ class UserProfileAdmin(admin.ModelAdmin):
                 index_list = []
                 if col_index not in non_valid_field_indices:
                     col_type = utils.get_col_type(key)
-                    if col_type in model_field_types_dict["int"]:
+                    if col_type in MODEL_FIELD_TYPES["int"]:
                         index_list = utils.indices_of_non_int_values(user_profile_dict[key])
-                    elif col_type in model_field_types_dict["bool"]:
+                    elif col_type in MODEL_FIELD_TYPES["bool"]:
                         index_list = utils.indices_of_non_boolean_values(user_profile_dict[key])
-                    elif col_type in model_field_types_dict["name"] and key != "dealership_name":
+                    elif col_type in MODEL_FIELD_TYPES["name"] and key != "dealership_name":
                         index_list = utils.indices_of_non_valid_names(user_profile_dict[key])
-                    elif col_type in model_field_types_dict["email"]:
+                    elif col_type in MODEL_FIELD_TYPES["email"]:
                         index_list = utils.indices_of_non_valid_emails(user_profile_dict[key])
 
                     for j in index_list:
@@ -201,15 +202,10 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             user_profile_dict = utils.read_csv_as_dict(text)
 
-            int_field_types_list = [models.AutoField, models.BigAutoField,
-                                    models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
-                                    models.PositiveIntegerField, models.PositiveBigIntegerField,
-                                    models.PositiveSmallIntegerField,
-                                    models.ForeignKey]
-
-            for key in user_profile_dict.keys():
+            # todo .key() gereksiz
+            for key in user_profile_dict:
                 col_type = utils.get_col_type(key)
-                if col_type in int_field_types_list:
+                if col_type in MODEL_FIELD_TYPES['int']:
                     user_profile_dict[key] = list(map(int, user_profile_dict[key]))
 
             create_if_not_exist = True if (request.POST.get("form-check-box-1") is not None) else False
@@ -235,8 +231,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
                 intersection_of_lists = non_exist_user_profile_id_indices
             else:  # Send only exist users and dealerships
-                intersection_of_lists = list(set(non_exist_user_profile_id_indices) & set(exist_user_id_indices) & set(
-                    exist_dealership_id_indices))
+                intersection_of_lists = set(non_exist_user_profile_id_indices) & set(exist_user_id_indices) & set(
+                    exist_dealership_id_indices)
 
             # CREATE USER PROFILES
             user_profiles_values_to_create_dict = self.get_obj_values_as_dict("userprofile", user_profile_dict,
@@ -357,6 +353,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                 else:
                     not_exist_id_indices.append(index)
                 index += 1
+
         except Exception as e:
             print(f"Exception Happened for {id_list} | {e}")
 
