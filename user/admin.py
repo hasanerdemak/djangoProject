@@ -350,12 +350,13 @@ class UserProfileAdmin(admin.ModelAdmin):
         not_exist_id_indices = []
         exist_id_indices = []
         try:
+            index = 0
             for obj_id in list_from_input:
-                index = list_from_input.index(obj_id)
                 if obj_id in id_list:
                     exist_id_indices.append(index)
                 else:
                     not_exist_id_indices.append(index)
+                index += 1
         except Exception as e:
             print(f"Exception Happened for {id_list} | {e}")
 
