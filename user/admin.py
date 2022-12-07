@@ -94,7 +94,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                     missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
                         utils.increase_list_values(index_list, 1)) + ' is/are required. \r\n'
                 col_index += 1
-
+#TODO constant olarak konulabilir
             model_field_types_dict = {"int": [models.AutoField, models.BigAutoField,
                                               models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
                                               models.PositiveIntegerField, models.PositiveBigIntegerField,
@@ -191,12 +191,14 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             user_profile_dict = utils.read_csv_as_dict(text)
 
+            #todo constantları tuple yap
             int_field_types_list = [models.AutoField, models.BigAutoField,
                                     models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
                                     models.PositiveIntegerField, models.PositiveBigIntegerField,
                                     models.PositiveSmallIntegerField,
                                     models.ForeignKey]
 
+            #todo .keys'e  gerek yok boşuna işlem fakat readablity artar
             for key in user_profile_dict.keys():
                 col_type = utils.get_col_type(key)
                 if col_type in int_field_types_list:
@@ -227,7 +229,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             else:  # Send only exist users and dealerships
                 intersection_of_lists = list(set(non_exist_user_profile_id_indices) & set(exist_user_id_indices) & set(
                     exist_dealership_id_indices))
-
+            #intersection of list de list'e cast etmeye gerek yok.
             # CREATE USER PROFILES
             user_profiles_values_to_create_dict = self.get_obj_values_as_dict(user_profile_dict, "userprofile",
                                                                               intersection_of_lists)
@@ -239,7 +241,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             self.update_objects("user", **users_values_to_update_dict)
 
             # Get Dealership values to update then UPDATE DEALERSHIPS
-            dealerships_values_to_update_dict = self.get_obj_values_as_dict(user_profile_dict, Dealership(),
+            dealerships_values_to_update_dict = self.get_obj_values_as_dict(user_profile_dict, 'dealersh',
                                                                             exist_dealership_id_indices)
             self.update_objects("dealership", **dealerships_values_to_update_dict)
 
