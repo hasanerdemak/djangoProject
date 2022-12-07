@@ -7,14 +7,11 @@ class UserProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User", related_name="user_profiles")
     dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE, verbose_name="Dealership",
                                    related_name="user_profiles")
+    is_active = models.BooleanField(verbose_name="is_active", default=True)
 
     @property
     def dealership_name(self):
         return self.dealership.name
-
-    @property
-    def is_active(self):
-        return self.user.is_active
 
     @property
     def first_name(self):

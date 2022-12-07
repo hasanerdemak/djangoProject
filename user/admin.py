@@ -18,9 +18,9 @@ from .models import UserProfile
 
 class UserProfileAdmin(admin.ModelAdmin):
     change_list_template = "user/my_user_profile_change_list.html"
-    list_display = ["user", "dealership"]
-    readonly_fields = ["dealership_name", "is_active", "first_name", "last_name", "email"]
-    fields = ["user", "dealership", "dealership_name", "is_active", "first_name", "last_name", "email"]
+    list_display = ["user", "dealership", "is_active"]
+    readonly_fields = ["dealership_name", "first_name", "last_name", "email"]
+    fields = ["user", "dealership", "is_active", "dealership_name", "first_name", "last_name", "email"]
     search_fields = ["first_name", "last_name", "email", "dealership_name"]
     characters = string.ascii_letters + string.digits + string.punctuation
 
@@ -196,6 +196,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                 db_user_profiles = UserProfile.objects.all()
             except Exception as e:
                 print(f"{e} Happened When Fetching Objects From DB")
+            User.objects.bulk_create()
 
             text = request.POST.get("form-text-area").rstrip("\r\n")
 
@@ -253,6 +254,15 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                                             exist_dealership_id_indices)
             updatable_dealerships = db_dealerships.filter(id__in=dealerships_values_to_update_dict["id"])
             self.update_objects("dealership", updatable_dealerships, **dealerships_values_to_update_dict)
+
+            # Get User Profile values to update then UPDATE USER PROFILES
+            user_profiles_values_to_update_dict = self.get_obj_values_as_dict("userprofile", user_profile_dict,
+                                                                              exist_user_profile_id_indices)
+            query = reduce(operator.or_, (Q(user_id=u_id, dealership_id=d_id) for u_id, d_id in
+                                          zip(user_profiles_values_to_update_dict['user_id'],
+                                              user_profiles_values_to_update_dict['dealership_id'])))
+            updatable_user_profiles = UserProfile.objects.filter(query)
+            self.update_objects("userprofile", updatable_user_profiles, **user_profiles_values_to_update_dict)
 
             return redirect("/admin/user/userprofile")
 
@@ -320,10 +330,6 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                            kwargs["id"])
                 kwargs.pop("id")
             elif model_str == 'userprofile':
-                query = reduce(operator.or_, (Q(user_id=u_id, dealership_id=d_id) for u_id, d_id in
-                                              zip(kwargs['user_id'], kwargs['dealership_id'])))
-
-                updatable_objects = UserProfile.objects.filter(query)
                 exist_objects_indices = utils.reorder_list(
                     list(updatable_objects.values_list('user_id', 'dealership_id')),
                     utils.merge_lists(kwargs['user_id'], kwargs['dealership_id']))
