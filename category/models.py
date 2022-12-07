@@ -14,9 +14,11 @@ class AssociatedCategory(models.Model):
                                    related_name="associated_categories")
     category = models.ForeignKey(Category, on_delete=models.CASCADE, verbose_name="Category",
                                  related_name="associated_categories")
+    is_active = models.BooleanField(verbose_name="is_active", default=True)
 
     class Meta:
         unique_together = (('dealership', 'category'),)
 
     def __str__(self):
-        return f"{self.dealership.name} - {self.category.name}"
+        return f"{self.dealership.name} - {self.category.name} - {self.is_active}"
+

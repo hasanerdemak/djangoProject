@@ -10,11 +10,16 @@ from .models import Dealership, DealershipGroup
 
 def create_associate_category(selected_categories, dealerships_ids_list):
     try:
-        AssociatedCategory.objects.filter(dealership_id__in=dealerships_ids_list).delete()
+        AssociatedCategory.objects.filter(dealership_id__in=dealerships_ids_list).update(is_active=False)
+
+        # Question: Could we use update_or_create
         AssociatedCategory.objects.bulk_create(
-            [AssociatedCategory(dealership_id=dealership_id, category_id=int(category_id))
-             for dealership_id in dealerships_ids_list
-             for category_id in selected_categories])
+            objs=[AssociatedCategory(dealership_id=dealership_id, category_id=int(category_id), is_active=True)
+                  for dealership_id in dealerships_ids_list
+                  for category_id in selected_categories],
+            update_conflicts=True,
+            update_fields=['is_active'],
+            unique_fields=['dealership_id', 'category_id'])
     except Exception as e:
         print(e)
 
