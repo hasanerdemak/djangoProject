@@ -30,7 +30,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_display = ["user", "dealership", "is_active"]
     readonly_fields = ["dealership_name", "first_name", "last_name", "email"]
     fields = ["user", "dealership", "is_active", "dealership_name", "first_name", "last_name", "email"]
-    search_fields = ["first_name", "last_name", "email", "dealership_name"]
+    search_fields = ["user__username","user__first_name", "user__last_name", "user__email", "dealership__name"]
     characters = string.ascii_letters + string.digits + string.punctuation
 
     class Meta:
