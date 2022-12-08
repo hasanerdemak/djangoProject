@@ -1,12 +1,11 @@
-import operator
+import contextlib
 import random
 import string
-from functools import reduce
 
 from django.contrib import admin
 from django.contrib.auth.models import User
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models
-from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
 from django.urls import re_path
@@ -24,13 +23,15 @@ MODEL_FIELD_TYPES = {"int": (models.AutoField, models.BigAutoField,
                      "name": [models.CharField],
                      "email": [models.EmailField]}
 
+REQUIRED_FIELDS = ("user_id", "dealership_id", "dealership_name", "is_active", "first_name", "last_name")
+
 
 class UserProfileAdmin(admin.ModelAdmin):
     change_list_template = "user/my_user_profile_change_list.html"
     list_display = ["user", "dealership", "is_active"]
     readonly_fields = ["dealership_name", "first_name", "last_name", "email"]
     fields = ["user", "dealership", "is_active", "dealership_name", "first_name", "last_name", "email"]
-    search_fields = ["user__username","user__first_name", "user__last_name", "user__email", "dealership__name"]
+    search_fields = ["user__username", "user__first_name", "user__last_name", "user__email", "dealership__name"]
     characters = string.ascii_letters + string.digits + string.punctuation
 
     class Meta:
@@ -96,78 +97,85 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         non_valid_field_indices = utils.non_valid_field_indices(user_profile_dict.keys())
         # If There is not non-valid field then check other errors
-        if len(non_valid_field_indices) == 0:
-            col_index = 0
-            for key in user_profile_dict.keys():
-                index_list = [index for index, value in enumerate(user_profile_dict[key]) if not value or value == ""]
+        if not non_valid_field_indices:
+            non_exist_required_fields_list = [field for field in REQUIRED_FIELDS if field not in user_profile_dict]
 
-                for j in index_list:
-                    missing_spaces_rows.append(j)
-                    missing_spaces_cols.append(col_index)
-                if len(index_list) != 0:
-                    missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
-                        utils.increase_list_values(index_list, 1)) + ' is/are required. \r\n'
-                col_index += 1
-
-            # NON VALID CHECK
-            col_index = 0
-            for key in user_profile_dict.keys():
-                index_list = []
-                if col_index not in non_valid_field_indices:
-                    col_type = utils.get_col_type(key)
-                    if col_type in MODEL_FIELD_TYPES["int"]:
-                        index_list = utils.indices_of_non_int_values(user_profile_dict[key])
-                    elif col_type in MODEL_FIELD_TYPES["bool"]:
-                        index_list = utils.indices_of_non_boolean_values(user_profile_dict[key])
-                    elif col_type in MODEL_FIELD_TYPES["name"] and key != "dealership_name":
-                        index_list = utils.indices_of_non_valid_names(user_profile_dict[key])
-                    elif col_type in MODEL_FIELD_TYPES["email"]:
-                        index_list = utils.indices_of_non_valid_emails(user_profile_dict[key])
+            if not non_exist_required_fields_list:
+                col_index = 0
+                for key in user_profile_dict:
+                    index_list = [index for index, value in enumerate(user_profile_dict[key]) if not value or value == ""]
 
                     for j in index_list:
-                        non_valid_spaces_rows.append(j)
-                        non_valid_spaces_cols.append(col_index)
+                        missing_spaces_rows.append(j)
+                        missing_spaces_cols.append(col_index)
                     if len(index_list) != 0:
-                        non_valid_messages += '"' + key + '" fields at row(s): ' + str(
-                            utils.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
-                col_index += 1
+                        missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
+                            utils.increase_list_values(index_list, 1)) + ' is/are required. \r\n'
+                    col_index += 1
 
-            unique_cols = [["user_id", "dealership_id"]]
-            col_index = 0
-            for col in unique_cols:
-                if isinstance(col, list):
-                    list_to_give = utils.merge_lists(*[user_profile_dict[col[i]] for i in range(len(col))])
-                else:
-                    list_to_give = user_profile_dict[col]
-                index_list = utils.indices_of_non_unique_cells(list_to_give)
+                # NON VALID CHECK
+                col_index = 0
+                for key in user_profile_dict:
+                    index_list = []
+                    if col_index not in non_valid_field_indices:
+                        col_type = utils.get_col_type(key)
+                        if col_type in MODEL_FIELD_TYPES["int"]:
+                            index_list = utils.indices_of_non_int_values(user_profile_dict[key])
+                        elif col_type in MODEL_FIELD_TYPES["bool"]:
+                            index_list = utils.indices_of_non_boolean_values(user_profile_dict[key])
+                        elif col_type in MODEL_FIELD_TYPES["name"] and key != "dealership_name":
+                            index_list = utils.indices_of_non_valid_names(user_profile_dict[key])
+                        elif col_type in MODEL_FIELD_TYPES["email"]:
+                            index_list = utils.indices_of_non_valid_emails(user_profile_dict[key])
 
-                if len(index_list) != 0:
+                        for j in index_list:
+                            non_valid_spaces_rows.append(j)
+                            non_valid_spaces_cols.append(col_index)
+                        if len(index_list) != 0:
+                            non_valid_messages += '"' + key + '" fields at row(s): ' + str(
+                                utils.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
+                    col_index += 1
+
+                unique_cols = [["user_id", "dealership_id"]]
+                col_index = 0
+                for col in unique_cols:
                     if isinstance(col, list):
-                        for _ in col:
+                        list_to_give = utils.merge_lists(*[user_profile_dict[col[i]] for i in range(len(col))])
+                    else:
+                        list_to_give = user_profile_dict[col]
+                    index_list = utils.indices_of_non_unique_cells(list_to_give)
+
+                    if len(index_list) != 0:
+                        if isinstance(col, list):
+                            for _ in col:
+                                for j in index_list:
+                                    non_unique_rows.append(j)
+                                    non_unique_cols.append(col_index)
+                                col_index += 1
+
+                            non_unique_messages += str(col) + ' pairs at row(s): '
+                            for index in index_list:
+                                non_unique_messages += str(index + 1) + ', '
+
+                            non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
+                            non_unique_messages += ' must be unique. \r\n'
+                        else:
                             for j in index_list:
                                 non_unique_rows.append(j)
                                 non_unique_cols.append(col_index)
-                            col_index += 1
+                            non_unique_messages += '"' + str(col) + '" fields at row(s): ' + str(
+                                utils.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
+                    col_index += 1
 
-                        non_unique_messages += str(col) + ' pairs at row(s): '
-                        for index in index_list:
-                            non_unique_messages += str(index + 1) + ', '
+                if not (len(non_valid_spaces_rows) or len(missing_spaces_rows) or len(non_unique_rows) or len(
+                        non_valid_field_indices)):
+                    is_valid = True
 
-                        non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
-                        non_unique_messages += ' must be unique. \r\n'
-                    else:
-                        for j in index_list:
-                            non_unique_rows.append(j)
-                            non_unique_cols.append(col_index)
-                        non_unique_messages += '"' + str(col) + '" fields at row(s): ' + str(
-                            utils.increase_list_values(index_list, 1)) + ' must be unique. \r\n'
-                col_index += 1
-
-            if not (len(non_valid_spaces_rows) or len(missing_spaces_rows) or len(non_unique_rows) or len(
-                    non_valid_field_indices)):
-                is_valid = True
-
-            error = None if is_valid else "Please Click On The Wrong Cells To Edit The Text"
+                error = None if is_valid else "Please Click On The Wrong Cells To Edit The Text"
+            else:
+                non_valid_field_indices = []
+                show_table = "false"
+                error = f"{non_exist_required_fields_list} Field(s) Must Be Exist"
         else:
             error = "Please Correct The Field Names First"
 
@@ -251,14 +259,15 @@ class UserProfileAdmin(admin.ModelAdmin):
             new_obj_values_dict["name"] = [user_profile_dict["dealership_name"][i] for i in wanted_rows_indices]
         elif model_str == "userprofile":
             model_instance = UserProfile()
-            new_obj_values_dict["user_id"] = [user_profile_dict["user_id"][i] for i in wanted_rows_indices]
-            new_obj_values_dict["dealership_id"] = [user_profile_dict["dealership_id"][i] for i in wanted_rows_indices]
+            new_obj_values_dict["is_active"] = [user_profile_dict["is_active"][i] for i in wanted_rows_indices]
         else:
             raise Exception('Unknown Model')
 
-        for field in model_instance._meta.fields:
-            if field.name in user_profile_dict.keys():
-                new_obj_values_dict[field.name] = [user_profile_dict[field.name][i] for i in wanted_rows_indices]
+        for key in user_profile_dict:
+            if key != "is_active":
+                with contextlib.suppress(KeyError, FieldDoesNotExist):
+                    model_instance._meta.get_field(key)
+                    new_obj_values_dict[key] = [user_profile_dict[key][i] for i in wanted_rows_indices]
 
         return new_obj_values_dict
 
@@ -272,9 +281,9 @@ class UserProfileAdmin(admin.ModelAdmin):
                                       for user_index in range(len(kwargs["id"]))]
 
                 field_list = [model_field[1].attname for model_field in enumerate(User._meta.fields)]
-
                 field_list.pop(field_list.index("id"))
                 field_list.pop(field_list.index("username"))
+
                 User.objects.bulk_create([User(**{key: values[i] for key, values in kwargs.items()})
                                           for i in range(len(kwargs["id"]))],
                                          update_conflicts=True,

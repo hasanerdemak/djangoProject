@@ -22,7 +22,7 @@ class UserProfile(models.Model):
         return self.user.last_name
 
     @property
-    def email(self) -> models.EmailField:
+    def email(self):
         return self.user.email
 
     def property_names(self):

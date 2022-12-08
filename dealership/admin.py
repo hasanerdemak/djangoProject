@@ -12,7 +12,6 @@ def create_associate_category(selected_categories, dealerships_ids_list):
     try:
         AssociatedCategory.objects.filter(dealership_id__in=dealerships_ids_list).update(is_active=False)
 
-        # Question: Could we use update_or_create
         AssociatedCategory.objects.bulk_create(
             objs=[AssociatedCategory(dealership_id=dealership_id, category_id=int(category_id), is_active=True)
                   for dealership_id in dealerships_ids_list
