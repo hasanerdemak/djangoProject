@@ -26,7 +26,7 @@ def create_associate_category(selected_categories, dealerships_ids_list):
 class AssociatedCategoryInline(admin.StackedInline):
     model = AssociatedCategory
     verbose_name_plural = "Associated Categories"
-    extra = 1
+    extra = 0
 
 
 class DealershipAdmin(admin.ModelAdmin):

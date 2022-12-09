@@ -3,6 +3,7 @@ import random
 import string
 
 from django.contrib import admin
+from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from django.core.exceptions import FieldDoesNotExist
 from django.db import models
@@ -23,7 +24,7 @@ MODEL_FIELD_TYPES = {"int": (models.AutoField, models.BigAutoField,
                      "name": [models.CharField],
                      "email": [models.EmailField]}
 
-REQUIRED_FIELDS = ("user_id", "dealership_id", "dealership_name", "is_active", "first_name", "last_name")
+REQUIRED_FIELDS = ("user_id", "dealership_id", "dealership_name", "first_name", "last_name")
 
 
 class UserProfileAdmin(admin.ModelAdmin):
@@ -103,7 +104,8 @@ class UserProfileAdmin(admin.ModelAdmin):
             if not non_exist_required_fields_list:
                 col_index = 0
                 for key in user_profile_dict:
-                    index_list = [index for index, value in enumerate(user_profile_dict[key]) if not value or value == ""]
+                    index_list = [index for index, value in enumerate(user_profile_dict[key]) if
+                                  not value or value == ""]
 
                     for j in index_list:
                         missing_spaces_rows.append(j)
@@ -136,6 +138,8 @@ class UserProfileAdmin(admin.ModelAdmin):
                                 utils.increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
                     col_index += 1
 
+                #TODO add comments
+                # Todo methodise
                 unique_cols = [["user_id", "dealership_id"]]
                 col_index = 0
                 for col in unique_cols:
@@ -229,6 +233,8 @@ class UserProfileAdmin(admin.ModelAdmin):
                                                                     db_user_profiles_fk_ids.values_list("dealership_id",
                                                                                                         flat=True).
                                                                     distinct())
+            # 1- user_id
+            # 2- firstname+lastname
 
             new_users_values_to_create_dict = self.get_obj_values_as_dict("user", user_profile_dict,
                                                                           wanted_user_id_indices)
@@ -259,7 +265,10 @@ class UserProfileAdmin(admin.ModelAdmin):
             new_obj_values_dict["name"] = [user_profile_dict["dealership_name"][i] for i in wanted_rows_indices]
         elif model_str == "userprofile":
             model_instance = UserProfile()
-            new_obj_values_dict["is_active"] = [user_profile_dict["is_active"][i] for i in wanted_rows_indices]
+            if "is_active" in user_profile_dict:
+                new_obj_values_dict["is_active"] = [user_profile_dict["is_active"][i] for i in wanted_rows_indices]
+            else:
+                new_obj_values_dict["is_active"] = [True for _ in wanted_rows_indices]
         else:
             raise Exception('Unknown Model')
 
@@ -274,7 +283,7 @@ class UserProfileAdmin(admin.ModelAdmin):
     def create_objects(self, model_str, **kwargs):
         try:
             if model_str == 'user':
-                kwargs["password"] = [''.join(random.choice(self.characters) for _ in range(8))
+                kwargs["password"] = [make_password(''.join(random.choice(self.characters) for _ in range(8)))
                                       for _ in range(len(kwargs["id"]))]
                 kwargs["username"] = [kwargs["first_name"][user_index] +
                                       kwargs["last_name"][user_index]

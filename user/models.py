@@ -2,11 +2,14 @@ from django.db import models
 from django.contrib.auth.models import User
 from dealership.models import Dealership
 
+#from django.conf import settings
+#settings.AUTH_USER_MODE
 
 class UserProfile(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User", related_name="user_profiles")
-    dealership = models.ForeignKey(Dealership, on_delete=models.CASCADE, verbose_name="Dealership",
-                                   related_name="user_profiles")
+    user = models.ForeignKey(User, on_delete=models.DO_NOTHING, verbose_name="User", related_name="user_profiles",
+                             blank=True, null=True)
+    dealership = models.ForeignKey(Dealership, on_delete=models.DO_NOTHING, verbose_name="Dealership",
+                                   related_name="user_profiles", blank=True, null=True)
     is_active = models.BooleanField(verbose_name="is_active", default=True)
 
     @property

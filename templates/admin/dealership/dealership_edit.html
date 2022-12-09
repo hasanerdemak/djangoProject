@@ -45,7 +45,7 @@
                         data-silent-initial-value-set="true" required placeholder="Select Field">
                     {% if field_opts %}
                         {% for field in field_opts %}
-                            {% if field.name != "id" %}
+                            {% if field.name != "id" and field.name != "name" %}
                                 <option value="{{ field.name }}">{{ field.verbose_name }}</option>
                             {% endif %}
                         {% endfor %}
