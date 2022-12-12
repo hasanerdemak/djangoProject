@@ -1,6 +1,7 @@
 import re
 from collections import Counter
 
+from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import FieldDoesNotExist
 
@@ -8,6 +9,15 @@ from dealership.models import Dealership
 from user.models import UserProfile
 
 REGEX_VALID_EMAIL = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+
+MODEL_FIELD_TYPES = {"int": (models.AutoField, models.BigAutoField,
+                             models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
+                             models.PositiveIntegerField, models.PositiveBigIntegerField,
+                             models.PositiveSmallIntegerField,
+                             models.ForeignKey),
+                     "bool": (models.BooleanField, models.NullBooleanField),
+                     "name": [models.CharField],
+                     "email": [models.EmailField]}
 
 
 def is_NaN(num):
@@ -39,7 +49,7 @@ def indices_of_non_boolean_values(value_list):
             if int(value_list[index]) != 0 and int(value_list[index]) != 1:
                 output.append(index)
         except ValueError:
-            if not is_NaN(value_list[index]):
+            if not is_NaN(value_list[index]) and value_list[index] != "":
                 output.append(index)
 
     return output
@@ -87,7 +97,7 @@ def read_csv_as_dict(text):
     return user_profile_dict
 
 
-def non_valid_field_indices(field_list):
+def get_non_valid_field_indices(field_list):
     field_names = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
     field_names += UserProfile().property_names()
 
@@ -103,3 +113,93 @@ def get_col_type(col_name):
         except FieldDoesNotExist:
             col_type = type(Dealership._meta.get_field(str(col_name).replace("dealership_", "")))
     return col_type
+
+
+def get_missing_spaces_indices_and_messages(user_profile_dict):
+    missing_spaces_rows = []
+    missing_spaces_cols = []
+    missing_spaces_messages = ""
+
+    col_index = 0
+    for key in user_profile_dict:
+        index_list = [index for index, value in enumerate(user_profile_dict[key]) if
+                      not value or value == ""]
+
+        for j in index_list:
+            missing_spaces_rows.append(j)
+            missing_spaces_cols.append(col_index)
+        if len(index_list) != 0:
+            missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
+                increase_list_values(index_list, 1)) + ' is/are required. \r\n'
+        col_index += 1
+
+    return missing_spaces_rows, missing_spaces_cols, missing_spaces_messages
+
+
+def get_non_valid_spaces_indices_and_messages(user_profile_dict):
+    non_valid_spaces_rows = []
+    non_valid_spaces_cols = []
+    non_valid_messages = ""
+
+    col_index = 0
+    for key in user_profile_dict:
+        index_list = []
+        col_type = get_col_type(key)
+        if col_type in MODEL_FIELD_TYPES["int"]:
+            index_list = indices_of_non_int_values(user_profile_dict[key])
+        elif col_type in MODEL_FIELD_TYPES["bool"]:
+            index_list = indices_of_non_boolean_values(user_profile_dict[key])
+        elif col_type in MODEL_FIELD_TYPES["name"] and key != "dealership_name":
+            index_list = indices_of_non_valid_names(user_profile_dict[key])
+        elif col_type in MODEL_FIELD_TYPES["email"]:
+            index_list = indices_of_non_valid_emails(user_profile_dict[key])
+
+        for j in index_list:
+            non_valid_spaces_rows.append(j)
+            non_valid_spaces_cols.append(col_index)
+        if len(index_list) != 0:
+            non_valid_messages += '"' + key + '" fields at row(s): ' + str(
+                increase_list_values(index_list, 1)) + ' is/are not valid. \r\n'
+        col_index += 1
+
+    return non_valid_spaces_rows, non_valid_spaces_cols, non_valid_messages
+
+
+def get_non_unique_spaces_indices_and_messages(user_profile_dict):
+    unique_fields = [["user_id", "dealership_id"]]
+
+    non_unique_rows = []
+    non_unique_cols = []
+    non_unique_messages = ""
+
+    col_index = 0
+    for field in unique_fields:
+        if isinstance(field, list):
+            list_to_give = merge_lists(*[user_profile_dict[field[i]] for i in range(len(field))])
+        else:
+            list_to_give = user_profile_dict[field]
+        index_list = indices_of_non_unique_cells(list_to_give)
+
+        if len(index_list) != 0:
+            if isinstance(field, list):
+                for _ in field:
+                    for j in index_list:
+                        non_unique_rows.append(j)
+                        non_unique_cols.append(col_index)
+                    col_index += 1
+
+                non_unique_messages += str(field) + ' pairs at row(s): '
+                for index in index_list:
+                    non_unique_messages += str(index + 1) + ', '
+
+                non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
+                non_unique_messages += ' must be unique. \r\n'
+            else:
+                for j in index_list:
+                    non_unique_rows.append(j)
+                    non_unique_cols.append(col_index)
+                non_unique_messages += '"' + str(field) + '" fields at row(s): ' + str(
+                    increase_list_values(index_list, 1)) + ' must be unique. \r\n'
+        col_index += 1
+
+    return non_unique_rows, non_unique_cols, non_unique_messages

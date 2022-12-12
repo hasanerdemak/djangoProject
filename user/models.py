@@ -2,8 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from dealership.models import Dealership
 
-#from django.conf import settings
-#settings.AUTH_USER_MODE
+
+# from django.conf import settings
+# settings.AUTH_USER_MODE
 
 class UserProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.DO_NOTHING, verbose_name="User", related_name="user_profiles",
