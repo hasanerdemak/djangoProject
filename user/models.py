@@ -4,7 +4,7 @@ from dealership.models import Dealership
 
 
 # from django.conf import settings
-# settings.AUTH_USER_MODE
+# settings.AUTH_USER_MODEL
 
 class UserProfile(models.Model):
     user = models.ForeignKey(User, on_delete=models.DO_NOTHING, verbose_name="User", related_name="user_profiles",

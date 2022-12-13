@@ -8,8 +8,9 @@ from django.core.exceptions import FieldDoesNotExist
 from dealership.models import Dealership
 from user.models import UserProfile
 
-REGEX_VALID_EMAIL = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+REGEX_VALID_EMAIL = re.compile(r'^(?P<email>[\w\.-]+@[\w\.-]+\.[\w]+)$')
 
+# map of field types to Django model field classes
 MODEL_FIELD_TYPES = {"int": (models.AutoField, models.BigAutoField,
                              models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
                              models.PositiveIntegerField, models.PositiveBigIntegerField,
@@ -31,7 +32,7 @@ def indices_of_non_int_values(value_list):
         try:
             int(value_list[index])
         except ValueError:
-            if not is_NaN(value_list[index]):
+            if not is_NaN(value_list[index]) and value_list[index] != "":
                 output.append(index)
 
     return output
@@ -39,7 +40,7 @@ def indices_of_non_int_values(value_list):
 
 def indices_of_non_valid_emails(value_list):
     return [index for index in range(len(value_list)) if (value_list[index] and
-                                                          not re.fullmatch(REGEX_VALID_EMAIL, value_list[index]))]
+                                                          not REGEX_VALID_EMAIL.match(value_list[index]))]
 
 
 def indices_of_non_boolean_values(value_list):
@@ -83,7 +84,9 @@ def merge_lists(*lists):
 def read_csv_as_dict(text):
     lines = text.split("\r\n")
 
-    user_profile_dict = {key: [] for key in lines[0].split(",")}
+    keys = lines[0].split(",")
+
+    user_profile_dict = {key: [] for key in keys}
     for i in range(1, len(lines)):
         values = lines[i].split(",")
         j = 0

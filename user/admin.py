@@ -60,7 +60,8 @@ class UserProfileAdmin(admin.ModelAdmin):
                    "is_valid": False,
                    "error": None,
                    "show_created_and_updated_objects": True,
-                   "created_users": User.objects.all()}
+                   "created_users": User.objects.all(),
+                   "created_user_profiles": UserProfile.objects.all()}
 
         # Get the values of the "error_check_button" and "create_button" fields
         error_check_button = request.POST.get("error-check-button")
@@ -85,7 +86,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         # Get the text in the "form-text-area" and remove any trailing new line characters
         text = request.POST.get("form-text-area").rstrip("\r\n")
-
+        # Convert the text to dictionary
         user_profile_dict = read_csv_as_dict(text)
 
         # Initialize the first values of the variables that will pass to the template as context
@@ -100,6 +101,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         non_unique_messages = ''
         show_table = 'true'
         is_valid = False
+        error = None
 
         non_valid_field_indices = get_non_valid_field_indices(user_profile_dict.keys())
         # If there is no non-valid field then check other errors
@@ -119,17 +121,20 @@ class UserProfileAdmin(admin.ModelAdmin):
                 non_unique_rows, non_unique_cols, non_unique_messages = \
                     get_non_unique_spaces_indices_and_messages(user_profile_dict)
 
+                # If there is no error then is_valid is true
                 if not (len(missing_spaces_rows) or len(non_valid_spaces_rows) or len(non_unique_rows)):
                     is_valid = True
+                else:  # is_valid is false
+                    error = "Please Click On The Wrong Cells To Edit The Text"
 
-                error = None if is_valid else "Please Click On The Wrong Cells To Edit The Text"
-            else:
+            else:  # If there is non-exist required field
                 non_valid_field_indices = []
                 show_table = "false"
                 error = f"{non_exist_required_fields_list} Field(s) Must Be Exist"
-        else:
+        else:  # If there is non-valid field
             error = "Please Correct The Field Names First"
 
+        # Assign final values of the variables that will pass to the template as context
         context = {"text": text,
                    "create_if_not_exist": create_if_not_exist,
                    "missing_spaces_rows": missing_spaces_rows,
@@ -153,13 +158,15 @@ class UserProfileAdmin(admin.ModelAdmin):
         else:  # POST
             db_user_profiles_fk_ids = None
             try:
+                # Fetch all user and dealership ids over UserProfile table
                 db_user_profiles_fk_ids = UserProfile.objects.select_related("user", "dealership").values(
-                    "user_id", "dealership_id")
+                    "user.id", "dealership.id")
             except Exception as e:
                 print(f"{e} Happened When Fetching Objects From DB")
 
+            # Get the text in the "form-text-area" and remove any trailing new line characters
             text = request.POST.get("form-text-area").rstrip("\r\n")
-
+            # Convert the text to dictionary
             user_profile_dict = read_csv_as_dict(text)
 
             for key in user_profile_dict:
@@ -229,10 +236,13 @@ class UserProfileAdmin(admin.ModelAdmin):
         return new_obj_values_dict
 
     def create_objects(self, model_str, **kwargs):
+        created_objects = None
         try:
             if model_str == 'user':
-                kwargs["password"] = [make_password(''.join(random.choice(self.characters) for _ in range(8)))
-                                      for _ in range(len(kwargs["id"]))]
+                password_list = [''.join(random.choice(self.characters) for _ in range(8))
+                                 for _ in range(len(kwargs["id"]))]
+
+                kwargs["password"] = [make_password(password) for password in password_list]
                 kwargs["username"] = [kwargs["first_name"][user_index] +
                                       kwargs["last_name"][user_index]
                                       for user_index in range(len(kwargs["id"]))]
@@ -240,38 +250,41 @@ class UserProfileAdmin(admin.ModelAdmin):
                 field_list = [model_field[1].attname for model_field in enumerate(User._meta.fields)]
                 field_list.pop(field_list.index("id"))
                 field_list.pop(field_list.index("username"))
+                field_list.pop(field_list.index("password"))
 
-                User.objects.bulk_create([User(**{key: values[i] for key, values in kwargs.items()})
-                                          for i in range(len(kwargs["id"]))],
-                                         update_conflicts=True,
-                                         unique_fields=["id"],
-                                         update_fields=field_list)
+                created_objects = User.objects.bulk_create([User(**{key: values[i] for key, values in kwargs.items()})
+                                                            for i in range(len(kwargs["id"]))],
+                                                           update_conflicts=True,
+                                                           unique_fields=["id"],
+                                                           update_fields=field_list)
             elif model_str == 'dealership':
                 kwargs["group_id"] = [1 for _ in range(len(kwargs["id"]))]
 
                 field_list = [model_field[1].attname for model_field in enumerate(Dealership._meta.fields)]
                 field_list.pop(field_list.index("id"))
-                Dealership.objects.bulk_create([Dealership(**{key: values[i] for key, values in kwargs.items()})
-                                                for i in range(len(kwargs["id"]))],
-                                               update_conflicts=True,
-                                               unique_fields=["id"],
-                                               update_fields=field_list)
+                created_objects = Dealership.objects.bulk_create(
+                    [Dealership(**{key: values[i] for key, values in kwargs.items()})
+                     for i in range(len(kwargs["id"]))],
+                    update_conflicts=True,
+                    unique_fields=["id"],
+                    update_fields=field_list)
             elif model_str == 'userprofile':
                 field_list = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
                 field_list.pop(field_list.index("id"))
                 field_list.pop(field_list.index("user_id"))
                 field_list.pop(field_list.index("dealership_id"))
-                UserProfile.objects.bulk_create(objs=[UserProfile(**{key: values[i] for key, values in kwargs.items()})
-                                                      for i in range(len(kwargs["user_id"]))],
-                                                update_conflicts=True,
-                                                unique_fields=["user_id", "dealership_id"],
-                                                update_fields=field_list)
+                created_objects = UserProfile.objects.bulk_create(
+                    objs=[UserProfile(**{key: values[i] for key, values in kwargs.items()})
+                          for i in range(len(kwargs["user_id"]))],
+                    update_conflicts=True,
+                    unique_fields=["user_id", "dealership_id"],
+                    update_fields=field_list)
             else:
                 raise Exception('Unknown Model')
         except Exception as e:
             print(f"{e} Happened When Creating {model_str}")
 
-        return ""
+        return created_objects
 
     @staticmethod
     def get_exist_lists(list_from_input, id_list):
