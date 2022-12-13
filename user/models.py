@@ -18,6 +18,10 @@ class UserProfile(models.Model):
         return self.dealership.name
 
     @property
+    def username(self):
+        return self.user.username
+
+    @property
     def first_name(self):
         return self.user.first_name
 

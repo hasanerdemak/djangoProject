@@ -4,17 +4,18 @@ import string
 
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
+from django.db.models import Case, When
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
 from django.urls import re_path
 
 from user.utils import *
-from .models import UserProfile
+from user.models import UserProfile
+
 
 # TODO add comments
 
 # A list of required fields that must be present in the CSV file
-REQUIRED_FIELDS = ("user_id", "dealership_id", "dealership_name", "first_name", "last_name")
 
 
 class UserProfileAdmin(admin.ModelAdmin):
@@ -87,6 +88,9 @@ class UserProfileAdmin(admin.ModelAdmin):
         text = request.POST.get("form-text-area").rstrip("\r\n")
 
         user_profile_dict = read_csv_as_dict(text)
+        # Setting up required fields for scenarios
+        required_fields = ["dealership_name", "first_name", "last_name"]
+        required_fields, scenario = set_required_fields_with_scenario(required_fields, user_profile_dict.keys())
 
         # Initialize the first values of the variables that will pass to the template as context
         missing_spaces_rows = []
@@ -104,7 +108,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         non_valid_field_indices = get_non_valid_field_indices(user_profile_dict.keys())
         # If there is no non-valid field then check other errors
         if not non_valid_field_indices:
-            non_exist_required_fields_list = [field for field in REQUIRED_FIELDS if field not in user_profile_dict]
+            non_exist_required_fields_list = [field for field in required_fields if field not in user_profile_dict]
             # If there is no non-exist required field then check other errors
             if not non_exist_required_fields_list:
                 # Missing spaces check
@@ -117,7 +121,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
                 # Non-unique spaces check
                 non_unique_rows, non_unique_cols, non_unique_messages = \
-                    get_non_unique_spaces_indices_and_messages(user_profile_dict)
+                    get_non_unique_spaces_indices_and_messages(user_profile_dict, scenario)
 
                 if not (len(missing_spaces_rows) or len(non_valid_spaces_rows) or len(non_unique_rows)):
                     is_valid = True
@@ -151,10 +155,16 @@ class UserProfileAdmin(admin.ModelAdmin):
         if request.method == "GET":
             return redirect("/admin/user/userprofile")
         else:  # POST
+
+            '''
+            Senaryo 1: userid gelebilir
+            Senaryo 2: userid yok, username var
+            Senaryo 3: userid yok, username yok, first ve lastname var 
+            '''
             db_user_profiles_fk_ids = None
             try:
                 db_user_profiles_fk_ids = UserProfile.objects.select_related("user", "dealership").values(
-                    "user_id", "dealership_id")
+                    "user_id", "dealership_id", "user__username")
             except Exception as e:
                 print(f"{e} Happened When Fetching Objects From DB")
 
@@ -167,84 +177,112 @@ class UserProfileAdmin(admin.ModelAdmin):
                 if col_type in MODEL_FIELD_TYPES['int']:
                     user_profile_dict[key] = list(map(int, user_profile_dict[key]))
 
+            unique_user_field_for_dict, unique_user_field_for_query = get_unique_field_name_for_query_and_dict(
+                user_profile_dict)
+
             create_if_not_exist = True if (request.POST.get("form-check-box-1") is not None) else False
 
-            wanted_user_id_indices = wanted_dealership_id_indices = all_indices_list = list(
-                range(0, len(user_profile_dict["user_id"])))
-
             if not create_if_not_exist:
-                wanted_user_id_indices = self.get_exist_lists(user_profile_dict['user_id'],
-                                                              db_user_profiles_fk_ids.values_list("user_id",
-                                                                                                  flat=True).distinct())
+
+                wanted_user_id_indices = self.get_exist_lists(user_profile_dict[unique_user_field_for_dict],
+                                                              db_user_profiles_fk_ids.values_list(
+                                                                  unique_user_field_for_query,
+                                                                  flat=True).distinct())
+
                 wanted_dealership_id_indices = self.get_exist_lists(user_profile_dict['dealership_id'],
                                                                     db_user_profiles_fk_ids.values_list("dealership_id",
                                                                                                         flat=True).
                                                                     distinct())
+                all_indices_list = list(range(0, len(user_profile_dict[unique_user_field_for_dict])))
+
+            else:
+                wanted_user_id_indices = wanted_dealership_id_indices = all_indices_list = list(
+                    range(0, len(user_profile_dict[unique_user_field_for_dict])))
             # 1- user_id
             # 2- username
             # 3- firstname+lastname
 
             new_users_values_to_create_dict = self.get_obj_values_as_dict("user", user_profile_dict,
-                                                                          wanted_user_id_indices)
+                                                                          wanted_user_id_indices,
+                                                                          unique_user_field_for_dict)
             new_dealerships_values_to_create_dict = self.get_obj_values_as_dict("dealership", user_profile_dict,
                                                                                 wanted_dealership_id_indices)
 
-            self.create_objects("user", **new_users_values_to_create_dict)
+            self.create_objects("user", unique_user_field_for_dict, **new_users_values_to_create_dict)
             self.create_objects("dealership", **new_dealerships_values_to_create_dict)
 
             user_profiles_values_to_create_dict = self.get_obj_values_as_dict("userprofile", user_profile_dict,
-                                                                              all_indices_list)
-            self.create_objects("userprofile", **user_profiles_values_to_create_dict)
+                                                                              all_indices_list,unique_user_field_for_dict)
+            self.create_objects("userprofile", unique_user_field_for_dict, **user_profiles_values_to_create_dict)
 
             return redirect("/admin/user/userprofile")
 
     @staticmethod
-    def get_obj_values_as_dict(model_str, user_profile_dict, wanted_rows_indices):
+    def get_obj_values_as_dict(model_str, user_profile_dict, wanted_rows_indices, unique_user_field_for_dict=None):
         new_obj_values_dict = dict()
 
         model_str = str(model_str).strip().lower()
 
         if model_str == 'user':
             model_instance = User()
-            new_obj_values_dict["id"] = [user_profile_dict["user_id"][i] for i in wanted_rows_indices]
+            if unique_user_field_for_dict == 'username':
+                new_obj_values_dict["username"] = [user_profile_dict[unique_user_field_for_dict][i] for i in
+                                                   wanted_rows_indices]
+            # unique_user_field_for_dict='user_id'
+            else:
+                new_obj_values_dict["id"] = [user_profile_dict[unique_user_field_for_dict][i] for i in
+                                             wanted_rows_indices]
+
         elif model_str == 'dealership':
             model_instance = Dealership()
             new_obj_values_dict["id"] = [user_profile_dict["dealership_id"][i] for i in wanted_rows_indices]
             new_obj_values_dict["name"] = [user_profile_dict["dealership_name"][i] for i in wanted_rows_indices]
+
         elif model_str == "userprofile":
             model_instance = UserProfile()
             if "is_active" in user_profile_dict:
                 new_obj_values_dict["is_active"] = [user_profile_dict["is_active"][i] for i in wanted_rows_indices]
             else:
                 new_obj_values_dict["is_active"] = [True for _ in wanted_rows_indices]
+
+            if unique_user_field_for_dict != "user_id":
+
+                preserved = Case(*[When(username=val, then=pos) for pos, val in enumerate(user_profile_dict['username'])],
+                                 default=len(user_profile_dict['username']))
+                new_obj_values_dict['user_id'] = User.objects.annotate(
+                    my_user_id=Case(When(username__in=user_profile_dict['username'], then='id'),
+                                    ), ).values_list('id', 'my_user_id', flat=True) \
+                    .order_by(preserved)
         else:
             raise Exception('Unknown Model')
 
         for key in user_profile_dict:
-            if key != "is_active":
+            if key != "is_active" and (unique_user_field_for_dict!='user_id' and key != 'user_id'):
                 with contextlib.suppress(KeyError, FieldDoesNotExist):
                     model_instance._meta.get_field(key)
                     new_obj_values_dict[key] = [user_profile_dict[key][i] for i in wanted_rows_indices]
 
         return new_obj_values_dict
 
-    def create_objects(self, model_str, **kwargs):
+    def create_objects(self, model_str, unique_user_field_for_dict=None, **kwargs):
         try:
             if model_str == 'user':
                 kwargs["password"] = [make_password(''.join(random.choice(self.characters) for _ in range(8)))
-                                      for _ in range(len(kwargs["id"]))]
-                kwargs["username"] = [kwargs["first_name"][user_index] +
-                                      kwargs["last_name"][user_index]
-                                      for user_index in range(len(kwargs["id"]))]
+                                      for _ in range(len(kwargs[unique_user_field_for_dict]))]
+                if unique_user_field_for_dict == 'user_id':
+                    kwargs["username"] = list(map(str.__add__, kwargs['first_name'], kwargs['last_name']))
+                    unique_fields = ['id']
+                else:
+                    unique_fields = ['username']
 
                 field_list = [model_field[1].attname for model_field in enumerate(User._meta.fields)]
                 field_list.pop(field_list.index("id"))
                 field_list.pop(field_list.index("username"))
 
                 User.objects.bulk_create([User(**{key: values[i] for key, values in kwargs.items()})
-                                          for i in range(len(kwargs["id"]))],
+                                          for i in range(len(kwargs[unique_user_field_for_dict]))],
                                          update_conflicts=True,
-                                         unique_fields=["id"],
+                                         unique_fields=unique_fields,
                                          update_fields=field_list)
             elif model_str == 'dealership':
                 kwargs["group_id"] = [1 for _ in range(len(kwargs["id"]))]
@@ -261,6 +299,9 @@ class UserProfileAdmin(admin.ModelAdmin):
                 field_list.pop(field_list.index("id"))
                 field_list.pop(field_list.index("user_id"))
                 field_list.pop(field_list.index("dealership_id"))
+                # if the scenario is 2 or 3
+
+
                 UserProfile.objects.bulk_create(objs=[UserProfile(**{key: values[i] for key, values in kwargs.items()})
                                                       for i in range(len(kwargs["user_id"]))],
                                                 update_conflicts=True,

@@ -9,6 +9,7 @@ from dealership.models import Dealership
 from user.models import UserProfile
 
 REGEX_VALID_EMAIL = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+REGEX_VALID_USERNAME = r"^[\w.@+-]+\Z"
 
 MODEL_FIELD_TYPES = {"int": (models.AutoField, models.BigAutoField,
                              models.IntegerField, models.BigIntegerField, models.SmallIntegerField,
@@ -17,7 +18,8 @@ MODEL_FIELD_TYPES = {"int": (models.AutoField, models.BigAutoField,
                              models.ForeignKey),
                      "bool": (models.BooleanField, models.NullBooleanField),
                      "name": [models.CharField],
-                     "email": [models.EmailField]}
+                     "email": [models.EmailField]
+                     }
 
 
 def is_NaN(num):
@@ -58,6 +60,11 @@ def indices_of_non_boolean_values(value_list):
 def indices_of_non_valid_names(value_list):
     return [index for index in range(len(value_list)) if (value_list[index] != "" and
                                                           not str(value_list[index]).replace(" ", "").isalpha())]
+
+
+def indices_of_non_valid_usernames(value_list):
+    return [index for index in range(len(value_list)) if (value_list[index] and
+                                                        not re.fullmatch(REGEX_VALID_USERNAME, value_list[index]))]
 
 
 def indices_of_non_unique_cells(value_list):
@@ -150,7 +157,10 @@ def get_non_valid_spaces_indices_and_messages(user_profile_dict):
         elif col_type in MODEL_FIELD_TYPES["bool"]:
             index_list = indices_of_non_boolean_values(user_profile_dict[key])
         elif col_type in MODEL_FIELD_TYPES["name"] and key != "dealership_name":
-            index_list = indices_of_non_valid_names(user_profile_dict[key])
+            if key== "username":
+                index_list = indices_of_non_valid_usernames(user_profile_dict[key])
+            else:
+                index_list = indices_of_non_valid_names(user_profile_dict[key])
         elif col_type in MODEL_FIELD_TYPES["email"]:
             index_list = indices_of_non_valid_emails(user_profile_dict[key])
 
@@ -165,8 +175,15 @@ def get_non_valid_spaces_indices_and_messages(user_profile_dict):
     return non_valid_spaces_rows, non_valid_spaces_cols, non_valid_messages
 
 
-def get_non_unique_spaces_indices_and_messages(user_profile_dict):
-    unique_fields = [["user_id", "dealership_id"]]
+def get_non_unique_spaces_indices_and_messages(user_profile_dict, scenario):
+    if scenario == 1:
+        unique_fields = [["user_id", "dealership_id"]]
+    elif scenario == 2:
+        unique_fields = [["username", "dealership_id"]]
+    elif scenario == 3:
+        unique_fields = [["first_name", "last_name", "dealership_id"]]
+    else:
+        unique_fields = None
 
     non_unique_rows = []
     non_unique_cols = []
@@ -203,3 +220,52 @@ def get_non_unique_spaces_indices_and_messages(user_profile_dict):
         col_index += 1
 
     return non_unique_rows, non_unique_cols, non_unique_messages
+
+
+def check_which_scenario(text_keys):
+    if 'user_id' in text_keys:
+        return 1
+    elif 'username' in text_keys:
+        return 2
+    elif 'first_name' in text_keys and 'last_name' in text_keys:
+        return 3
+    else:
+        raise Exception
+
+
+def set_required_fields_with_scenario(required_fields, text_keys):
+    scenario = check_which_scenario(text_keys)
+
+    if scenario == 1:
+        required_fields.append('user_id')
+    elif scenario == 2:
+        required_fields.append('username')
+    elif scenario == 3:
+        required_fields.append('firstname')
+        required_fields.append('lastname')
+
+    return required_fields, scenario
+
+
+def get_unique_field_name_for_query_and_dict(user_profile_dict):
+    scenario = check_which_scenario(user_profile_dict.keys())
+
+    if scenario == 1:
+        unique_user_field_for_dict = 'user_id'
+        unique_user_field_for_query = 'user_id'
+
+    elif scenario == 2:
+        unique_user_field_for_dict = 'username'
+        unique_user_field_for_query = 'user__username'
+
+    elif scenario == 3:
+        user_profile_dict['username'] = list(
+            map(str.__add__, user_profile_dict['first_name'], user_profile_dict['last_name']))
+        unique_user_field_for_dict = 'username'
+        unique_user_field_for_query = 'user__username'
+    else :
+        unique_user_field_for_dict = None
+        unique_user_field_for_query = None
+
+
+    return unique_user_field_for_dict,unique_user_field_for_query
