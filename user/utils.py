@@ -224,15 +224,29 @@ def get_non_unique_spaces_indices_and_messages(user_profile_dict, scenario):
     return non_unique_rows, non_unique_cols, non_unique_messages
 
 
+def get_exist_lists(list_from_input, id_list):
+    # Get all ids from model objects
+    exist_id_indices = []
+    try:
+        index = 0
+        for obj_id in list_from_input:
+            if obj_id in id_list:
+                exist_id_indices.append(index)
+            index += 1
+
+    except Exception as e:
+        print(f"Exception Happened for {id_list} | {e}")
+
+    return exist_id_indices
+
+
 def check_which_scenario(text_keys):
     if 'user_id' in text_keys:
         return 1
     elif 'username' in text_keys:
         return 2
-    elif 'first_name' in text_keys and 'last_name' in text_keys:
-        return 3
     else:
-        raise Exception
+        return 3
 
 
 def set_required_fields_with_scenario(required_fields, text_keys):
@@ -243,8 +257,8 @@ def set_required_fields_with_scenario(required_fields, text_keys):
     elif scenario == 2:
         required_fields.append('username')
     elif scenario == 3:
-        required_fields.append('firstname')
-        required_fields.append('lastname')
+        required_fields.append('first_name')
+        required_fields.append('last_name')
 
     return required_fields, scenario
 

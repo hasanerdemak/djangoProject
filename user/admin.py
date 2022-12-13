@@ -90,7 +90,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         # Convert the text to dictionary
         user_profile_dict = read_csv_as_dict(text)
         # Setting up required fields for scenarios
-        required_fields = ["dealership_name", "first_name", "last_name"]
+        required_fields = ["dealership_id", "dealership_name"]
         required_fields, scenario = set_required_fields_with_scenario(required_fields, user_profile_dict.keys())
 
         # Initialize the first values of the variables that will pass to the template as context
@@ -191,15 +191,15 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             if not create_if_not_exist:
 
-                wanted_user_id_indices = self.get_exist_lists(user_profile_dict[unique_user_field_for_dict],
-                                                              db_user_profiles_fk_ids.values_list(
-                                                                  unique_user_field_for_query,
-                                                                  flat=True).distinct())
+                wanted_user_id_indices = get_exist_lists(user_profile_dict[unique_user_field_for_dict],
+                                                         db_user_profiles_fk_ids.values_list(
+                                                             unique_user_field_for_query,
+                                                             flat=True).distinct())
 
-                wanted_dealership_id_indices = self.get_exist_lists(user_profile_dict['dealership_id'],
-                                                                    db_user_profiles_fk_ids.values_list("dealership_id",
-                                                                                                        flat=True).
-                                                                    distinct())
+                wanted_dealership_id_indices = get_exist_lists(user_profile_dict['dealership_id'],
+                                                               db_user_profiles_fk_ids.values_list("dealership_id",
+                                                                                                   flat=True).
+                                                               distinct())
                 all_indices_list = list(range(0, len(user_profile_dict[unique_user_field_for_dict])))
 
             else:
@@ -322,22 +322,6 @@ class UserProfileAdmin(admin.ModelAdmin):
             print(f"{e} Happened When Creating {model_str}")
 
         return created_objects
-
-    @staticmethod
-    def get_exist_lists(list_from_input, id_list):
-        # Get all ids from model objects
-        exist_id_indices = []
-        try:
-            index = 0
-            for obj_id in list_from_input:
-                if obj_id in id_list:
-                    exist_id_indices.append(index)
-                index += 1
-
-        except Exception as e:
-            print(f"Exception Happened for {id_list} | {e}")
-
-        return exist_id_indices
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
