@@ -4,7 +4,7 @@ import string
 
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
-from django.db.models import Case, When
+from django.db.models import Case, When, F
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
 from django.urls import re_path
@@ -184,8 +184,12 @@ class UserProfileAdmin(admin.ModelAdmin):
                 if col_type in MODEL_FIELD_TYPES['int']:
                     user_profile_dict[key] = list(map(int, user_profile_dict[key]))
 
-            unique_user_field_for_dict, unique_user_field_for_query = get_unique_field_name_for_query_and_dict(
+            unique_user_field_for_dict, unique_user_field_for_query, scenario = get_unique_field_name_for_query_and_dict(
                 user_profile_dict)
+
+            if (scenario == 1 and 'username' not in user_profile_dict.keys()) or scenario == 3:
+                user_profile_dict["username"] = list(
+                    map(str.__add__, user_profile_dict['first_name'], user_profile_dict['last_name']))
 
             create_if_not_exist = True if (request.POST.get("form-check-box-1") is not None) else False
 
@@ -257,15 +261,15 @@ class UserProfileAdmin(admin.ModelAdmin):
                 preserved = Case(
                     *[When(username=val, then=pos) for pos, val in enumerate(user_profile_dict['username'])],
                     default=len(user_profile_dict['username']))
-                new_obj_values_dict['user_id'] = User.objects.annotate(
-                    my_user_id=Case(When(username__in=user_profile_dict['username'], then='id'),
-                                    ), ).values_list('id', 'my_user_id', flat=True) \
-                    .order_by(preserved)
+                new_obj_values_dict['user_id'] = list(User.objects.annotate(
+                    my_user_id=Case(When(username__in=user_profile_dict['username'], then='id'), )).filter(
+                    id__in=F('my_user_id')).values_list('my_user_id', flat=True).order_by(preserved))
+
         else:
             raise Exception('Unknown Model')
 
         for key in user_profile_dict:
-            if key != "is_active" and (unique_user_field_for_dict != 'user_id' and key != 'user_id'):
+            if key != "is_active":
                 with contextlib.suppress(KeyError, FieldDoesNotExist):
                     model_instance._meta.get_field(key)
                     new_obj_values_dict[key] = [user_profile_dict[key][i] for i in wanted_rows_indices]
@@ -279,7 +283,6 @@ class UserProfileAdmin(admin.ModelAdmin):
                 kwargs["password"] = [make_password(''.join(random.choice(self.characters) for _ in range(8)))
                                       for _ in range(len(kwargs[unique_user_field_for_dict]))]
                 if unique_user_field_for_dict == 'user_id':
-                    kwargs["username"] = list(map(str.__add__, kwargs['first_name'], kwargs['last_name']))
                     unique_fields = ['id']
                 else:
                     unique_fields = ['username']

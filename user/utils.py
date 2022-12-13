@@ -243,8 +243,8 @@ def set_required_fields_with_scenario(required_fields, text_keys):
     elif scenario == 2:
         required_fields.append('username')
     elif scenario == 3:
-        required_fields.append('firstname')
-        required_fields.append('lastname')
+        required_fields.append('first_name')
+        required_fields.append('last_name')
 
     return required_fields, scenario
 
@@ -269,4 +269,4 @@ def get_unique_field_name_for_query_and_dict(user_profile_dict):
         unique_user_field_for_dict = None
         unique_user_field_for_query = None
 
-    return unique_user_field_for_dict, unique_user_field_for_query
+    return unique_user_field_for_dict, unique_user_field_for_query,scenario
