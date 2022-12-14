@@ -138,8 +138,8 @@ def get_missing_spaces_indices_and_messages(user_profile_dict):
             missing_spaces_rows.append(j)
             missing_spaces_cols.append(col_index)
         if len(index_list) != 0:
-            missing_spaces_messages += '"' + key + '" field at row(s): ' + str(
-                increase_list_values(index_list, 1)) + ' is/are required. \r\n'
+            list_str = str(increase_list_values(index_list, 1))
+            missing_spaces_messages += f'"{key}" field at row(s): {list_str} is/are required. \r\n'
         col_index += 1
 
     return missing_spaces_rows, missing_spaces_cols, missing_spaces_messages
@@ -179,47 +179,32 @@ def get_non_valid_spaces_indices_and_messages(user_profile_dict):
 
 def get_non_unique_spaces_indices_and_messages(user_profile_dict, scenario):
     if scenario == 1:
-        unique_fields = [["user_id", "dealership_id"]]
+        unique_fields = ["user_id", "dealership_id"]
     elif scenario == 2:
-        unique_fields = [["username", "dealership_id"]]
-    elif scenario == 3:
-        unique_fields = [["first_name", "last_name", "dealership_id"]]
+        unique_fields = ["username", "dealership_id"]
     else:
-        unique_fields = None
+        return [], [], ""
 
     non_unique_rows = []
     non_unique_cols = []
     non_unique_messages = ""
 
-    col_index = 0
-    for field in unique_fields:
-        if isinstance(field, list):
-            list_to_give = merge_lists(*[user_profile_dict[field[i]] for i in range(len(field))])
-        else:
-            list_to_give = user_profile_dict[field]
-        index_list = indices_of_non_unique_cells(list_to_give)
+    list_to_give = merge_lists(*[user_profile_dict[unique_fields[i]] for i in range(len(unique_fields))])
 
-        if len(index_list) != 0:
-            if isinstance(field, list):
-                for _ in field:
-                    for j in index_list:
-                        non_unique_rows.append(j)
-                        non_unique_cols.append(col_index)
-                    col_index += 1
+    index_list = indices_of_non_unique_cells(list_to_give)
 
-                non_unique_messages += str(field) + ' pairs at row(s): '
-                for index in index_list:
-                    non_unique_messages += str(index + 1) + ', '
+    if len(index_list) != 0:
+        for field in unique_fields:
+            for j in index_list:
+                non_unique_rows.append(j)
+                non_unique_cols.append(list(user_profile_dict.keys()).index(field))
 
-                non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
-                non_unique_messages += ' must be unique. \r\n'
-            else:
-                for j in index_list:
-                    non_unique_rows.append(j)
-                    non_unique_cols.append(col_index)
-                non_unique_messages += '"' + str(field) + '" fields at row(s): ' + str(
-                    increase_list_values(index_list, 1)) + ' must be unique. \r\n'
-        col_index += 1
+        non_unique_messages += str(unique_fields) + ' at row(s): '
+        for index in index_list:
+            non_unique_messages += str(index + 1) + ', '
+
+        non_unique_messages = non_unique_messages[:len(non_unique_messages) - 2]
+        non_unique_messages += ' must be unique. \r\n'
 
     return non_unique_rows, non_unique_cols, non_unique_messages
 
@@ -268,19 +253,42 @@ def get_unique_field_name_for_query_and_dict(user_profile_dict):
 
     if scenario == 1:
         unique_user_field_for_dict = 'user_id'
-        unique_user_field_for_query = 'user_id'
+        unique_user_field_for_user_query = 'id'
+        unique_user_field_for_user_profile_query = 'user_id'
 
-    elif scenario == 2:
+    elif scenario == 2 or scenario == 3:
         unique_user_field_for_dict = 'username'
-        unique_user_field_for_query = 'user__username'
-
-    elif scenario == 3:
-        user_profile_dict['username'] = list(
-            map(str.__add__, user_profile_dict['first_name'], user_profile_dict['last_name']))
-        unique_user_field_for_dict = 'username'
-        unique_user_field_for_query = 'user__username'
+        unique_user_field_for_user_query = 'username'
+        unique_user_field_for_user_profile_query = 'user__username'
+        if scenario == 3:
+            user_profile_dict['username'] = list(
+                map(str.__add__, user_profile_dict['first_name'], user_profile_dict['last_name']))
     else:
         unique_user_field_for_dict = None
-        unique_user_field_for_query = None
+        unique_user_field_for_user_query = None
+        unique_user_field_for_user_profile_query = None
 
-    return unique_user_field_for_dict, unique_user_field_for_query, scenario
+    return unique_user_field_for_dict, unique_user_field_for_user_query, unique_user_field_for_user_profile_query, scenario
+
+
+def update_same_usernames(list1, list2):
+    # Create an empty dictionary to store the frequencies
+    frequencies = {}
+    # Loop over the strings in list1
+    for username1 in list1:
+        # Initialize the count for this string to 0
+        count = 0
+        # Loop over the strings in list2
+        for username2 in list2:
+            # Check if the string in list1 is a substring of the string in list2 (ignoring the characters after the hyphen and after "ls")
+            if username1.lower() in username2.lower():
+                count += 1
+        # Add the count for this string to the dictionary
+        frequencies[username1.lower()] = count
+
+    for index, username in enumerate(list1):
+        if frequencies[username.lower()] > 0:
+            frequencies[username.lower()] += 1
+            list1[index] += f"-{str(frequencies[username.lower()])}"
+
+    return list1

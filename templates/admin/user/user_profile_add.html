@@ -157,120 +157,121 @@
               integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
               crossorigin="anonymous">
     {% endblock %}
+    {% if not show_created_and_updated_objects %}
+        <!-- CSV UPLOAD -->
+        <div {% if show_table == "true" %} style="display: none" {% endif %}>
+            <input type="file" id="file-upload" oninput="enableUploadButton()"/>
+            <button type="button" class="btn btn-primary" id="upload" value="upload"
+                    onclick="read(document.getElementById('file-upload'))" disabled>
+                Upload
+            </button>
+            <hr/>
+        </div>
 
-    <!-- CSV UPLOAD -->
-    <div {% if show_table == "true" %} style="display: none" {% endif %}>
-        <input type="file" id="file-upload" oninput="enableUploadButton()"/>
-        <button type="button" class="btn btn-primary" id="upload" value="upload"
-                onclick="read(document.getElementById('file-upload'))" disabled>
-            Upload
-        </button>
-        <hr/>
-    </div>
+        <form action="" method="POST">
+            {% csrf_token %}
 
-    <form action="" method="POST">
-        {% csrf_token %}
-
-        <!-- Message input -->
-        <div {% if show_table == "true" %} style="display: none" {% else %}
-                                           class="row d-flex justify-content-center" {% endif %}>
-            <div class="custom-textarea">
+            <!-- Message input -->
+            <div {% if show_table == "true" %} style="display: none" {% else %}
+                                               class="row d-flex justify-content-center" {% endif %}>
+                <div class="custom-textarea">
                 <textarea class="textarea" spellcheck="false" id="form-text-area" name="form-text-area" required
                           {% if is_valid %}readonly{% endif %}>{% if text %}{{ text }}{% endif %}</textarea>
-                <!--class="form-control"-->
-                <div class="linenumbers"></div>
-            </div>
-        </div>
-
-        <a href="" onclick="window.reset()" {% if show_table == "false" %} style="display: none"{% endif %}>
-            < Go back</a>
-
-        <!-- Checkbox -->
-        <div class="row">
-            <div class="form-check col-12 d-flex justify-content-center mb-4">
-                <input class="form-check-input me-2" type="checkbox" value="" name="form-check-box-1"
-                       id="form-check-box"
-                        {% if create_if_not_exist %} checked {% endif %}/>
-                <label class="form-check-label" for="form-check-box-1">
-                    Create Objects If Not Exist In The Database
-                </label>
-            </div>
-        </div>
-
-        <!-- BUTTONS DIV-->
-        <div class="row d-flex justify-content-center form-check ">
-            <div class="col-6 d-flex justify-content-center">
-                <button type="submit" class="btn btn-primary" name="error-check-button" value="check"
-                        onclick="copyTableContentToTextArea()">
-                    Error Check
-                </button>
+                    <!--class="form-control"-->
+                    <div class="linenumbers"></div>
+                </div>
             </div>
 
-            <div class="col-6 d-flex justify-content-center">
-                <button type="submit" class="btn btn-primary" name="create-button" value="create"
-                        onclick="copyTableContentToTextArea()" {% if is_valid %} {% else %} disabled {% endif %}>
-                    Create User Profile
-                </button>
-            </div>
-        </div>
-    </form>
+            <a href="" onclick="window.reset()" {% if show_table == "false" %} style="display: none"{% endif %}>
+                < Go back</a>
 
-    <div style="margin-top: 20px">
-        <!--Error Colors-->
-        <div>
-            {% if error %}
-                <p style="font-weight: bold; color: #b00020">{{ error }}</p>
-            {% endif %}
-            {% if missing_spaces_rows %}
-                <span class="hovertext" data-hover="{{ missing_spaces_messages }}">
+            <!-- Checkbox -->
+            <div class="row">
+                <div class="form-check col-12 d-flex justify-content-center mb-4">
+                    <input class="form-check-input me-2" type="checkbox" value="" name="form-check-box-1"
+                           id="form-check-box"
+                            {% if create_if_not_exist %} checked {% endif %}/>
+                    <label class="form-check-label" for="form-check-box-1">
+                        Create Objects If Not Exist In The Database
+                    </label>
+                </div>
+            </div>
+
+            <!-- BUTTONS DIV-->
+            <div class="row d-flex justify-content-center form-check ">
+                <div class="col-6 d-flex justify-content-center">
+                    <button type="submit" class="btn btn-primary" name="error-check-button" value="check"
+                            onclick="copyTableContentToTextArea()">
+                        Error Check
+                    </button>
+                </div>
+
+                <div class="col-6 d-flex justify-content-center">
+                    <button type="submit" class="btn btn-primary" name="create-button" value="create"
+                            onclick="copyTableContentToTextArea()" {% if is_valid %} {% else %} disabled {% endif %}>
+                        Create User Profile
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <div style="margin-top: 20px">
+            <!--Error Colors-->
+            <div>
+                {% if error %}
+                    <p style="font-weight: bold; color: #b00020">{{ error }}</p>
+                {% endif %}
+                {% if missing_spaces_rows %}
+                    <span class="hovertext" data-hover="{{ missing_spaces_messages }}">
                     <svg id="first-rect-svg" width="15" height="15">
                         <rect style="fill:#ff5454;stroke-width:3;stroke:rgb(0,0,0)" height="15" width="15"></rect>
                     </svg>
                     <label for="first-rect-svg">Missing Cells</label>
                 </span>
-            {% endif %}
+                {% endif %}
 
-            {% if non_valid_spaces_rows %}
-                <span class="hovertext" data-hover="{{ non_valid_messages }}">
+                {% if non_valid_spaces_rows %}
+                    <span class="hovertext" data-hover="{{ non_valid_messages }}">
                     <svg id="second-rect-svg" width="15" height="15">
                         <rect style="fill:#ffcc00;stroke-width:3;stroke:rgb(0,0,0)" height="15" width="15"></rect>
                     </svg>
                     <label for="second-rect-svg">Non-Valid Cells</label>
                 </span>
-            {% endif %}
+                {% endif %}
 
-            {% if non_unique_rows %}
-                <span class="hovertext" data-hover="{{ non_unique_messages }}">
+                {% if non_unique_rows %}
+                    <span class="hovertext" data-hover="{{ non_unique_messages }}">
                     <svg id="third-rect-svg" width="15" height="15">
                         <rect style="fill:#0095ff;stroke-width:3;stroke:rgb(0,0,0)" height="15" width="15"></rect>
                     </svg>
                     <label for="third-rect-svg">Non-Unique Rows</label>
                 </span>
-            {% endif %}
+                {% endif %}
 
-            {% if non_valid_field_indices %}
-                <span class="hovertext" data-hover="{{ non_valid_field_messages }}">
+                {% if non_valid_field_indices %}
+                    <span class="hovertext" data-hover="{{ non_valid_field_messages }}">
                     <svg id="second-rect-svg" width="15" height="15">
                         <rect style="fill:#ffcc00;stroke-width:3;stroke:rgb(0,0,0);width: inherit;height: inherit"></rect>
                     </svg>
                     <label for="second-rect-svg">Non-Valid Cells</label>
                 </span>
-            {% endif %}
+                {% endif %}
 
+            </div>
+            <!-- TABLE DIV -->
+            <div id="div-table">
+
+            </div>
         </div>
-        <!-- TABLE DIV -->
-        <div id="div-table">
 
-        </div>
-    </div>
 
-    <!-- List of created and updated objects -->
-    {% if show_created_and_updated_objects %}
+        <!-- List of created and updated objects -->
+    {% else %}
         <div class="grid-container">
             <div class="grid-child">
                 <h4>Created Users</h4>
                 {% if created_users %}
-                    <table class="table">
+                    <table class="table" id="created-users-table">
                         <thead>
                         <tr>
                             <th scope="col">username</th>
@@ -278,16 +279,24 @@
                         </tr>
                         </thead>
                         <tbody>
-                        {% for created_user in created_users %}
+                        {% for created_user, password in created_users %}
                             <tr>
                                 <th scope="row">
                                     <a href="/admin/auth/user/{{ created_user.id }}/change/">{{ created_user.username }}</a>
                                 </th>
-                                <td>{{ created_user.password }}</td>
+                                <td>{{ password }}</td>
                             </tr>
                         {% endfor %}
                         </tbody>
                     </table>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="tableToCSV()" style="margin: 5px">
+                            Download as .csv
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm" id="download-excel-button" style="margin: 5px">
+                            Download as .xlsx
+                        </button>
+                    </div>
                 {% else %}
                     <div class="alert alert-danger">There are no created users.</div>
                 {% endif %}
@@ -420,6 +429,7 @@
         </div>
     {% endif %}
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.15.5/xlsx.full.min.js"></script>
     <!-- CSV UPLOAD SCRIPT -->
     <script type="text/javascript">
         const reader = new FileReader()
@@ -587,5 +597,84 @@
             divTable.innerHTML = tbl;
 
         }
+    </script>
+    <script type="text/javascript">
+        function tableToCSV() {
+
+            const tbl = document.getElementById("created-users-table");
+            let newText = "";
+            for (let i = 0; i < tbl.rows.length; i++) {
+                for (let j = 0; j < tbl.rows[i].cells.length; j++) {
+                    newText += tbl.rows[i].cells[j].innerText + ",";
+                }
+                newText = newText.slice(0, -1);
+                newText += '\r\n';
+            }
+            newText = newText.slice(0, -2);
+
+            // Call this function to download csv file
+            downloadCSVFile(newText);
+
+        }
+
+        function downloadCSVFile(csv_data) {
+
+            // Create CSV file object and feed
+            // our csv_data into it
+            CSVFile = new Blob([csv_data], {
+                type: "text/csv"
+            });
+
+            // Create to temporary link to initiate
+            // download process
+            var temp_link = document.createElement('a');
+
+            // Download csv file
+            temp_link.download = "user_passwords.csv";
+            temp_link.href = window.URL.createObjectURL(CSVFile);
+
+            // This link should not be displayed
+            temp_link.style.display = "none";
+            document.body.appendChild(temp_link);
+
+            // Automatically click the link to
+            // trigger download
+            temp_link.click();
+            document.body.removeChild(temp_link);
+        }
+
+
+        function generateExcel() {
+            // Get the table element from the page
+            const tbl = document.getElementById("created-users-table");
+            let newText = "";
+            for (let i = 0; i < tbl.rows.length; i++) {
+                for (let j = 0; j < tbl.rows[i].cells.length; j++) {
+                    newText += tbl.rows[i].cells[j].innerText + ",";
+                }
+                newText = newText.slice(0, -1);
+                newText += '\r\n';
+            }
+            newText = newText.slice(0, -2);
+
+            const arrayOfArrayCsv = [];
+            const lines = newText.split("\r\n");
+            for (let i = 0; i < lines.length; i++) {
+                arrayOfArrayCsv.push(lines[i].split(","))
+            }
+
+            const workbook = XLSX.utils.book_new();
+            const newWs = XLSX.utils.aoa_to_sheet(arrayOfArrayCsv);
+
+            // Add the data to the Excel workbook
+            XLSX.utils.book_append_sheet(workbook, newWs, 'Sheet1');
+
+            // Generate the Excel file
+            XLSX.writeFile(workbook, 'user_passwords.xlsx');
+        }
+
+        // Now we need to create a button that the user can click to download the Excel file
+        const downloadButton = document.getElementById('download-excel-button');
+        downloadButton.addEventListener('click', generateExcel);
     </script>
 {% endblock %}
