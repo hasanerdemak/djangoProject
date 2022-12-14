@@ -1,10 +1,12 @@
 import contextlib
+import operator
 import random
 import string
+from functools import reduce
 
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
-from django.db.models import Case, When, F
+from django.db.models import Case, When, F, Q
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
 from django.urls import re_path
@@ -166,11 +168,10 @@ class UserProfileAdmin(admin.ModelAdmin):
             Senaryo 2: userid yok, username var
             Senaryo 3: userid yok, username yok, first ve lastname var 
             '''
-            db_user_profiles_fk_ids = None
+            db_user_profiles = None
             try:
                 # Fetch all user and dealership ids over UserProfile table
-                db_user_profiles_fk_ids = UserProfile.objects.select_related("user", "dealership").values(
-                    "user_id", "dealership_id", "user__username")
+                db_user_profiles = UserProfile.objects.select_related("user", "dealership")
             except Exception as e:
                 print(f"{e} Happened When Fetching Objects From DB")
 
@@ -193,39 +194,60 @@ class UserProfileAdmin(admin.ModelAdmin):
 
             create_if_not_exist = True if (request.POST.get("form-check-box-1") is not None) else False
 
-            if not create_if_not_exist:
+            non_exist_user_id_indices, exist_user_id_indices = self.get_exist_and_non_exist_lists(
+                user_profile_dict[unique_user_field_for_dict],
+                db_user_profiles.values_list(unique_user_field_for_query, flat=True))
+            non_exist_dealership_id_indices, exist_dealership_id_indices = self.get_exist_and_non_exist_lists(
+                user_profile_dict['dealership_id'], db_user_profiles.values_list('dealership_id', flat=True))
+            non_exist_user_profile_id_indices, exist_user_profile_id_indices = self.get_exist_and_non_exist_lists(
+                merge_lists(user_profile_dict[unique_user_field_for_dict], user_profile_dict['dealership_id']),
+                db_user_profiles.values_list(unique_user_field_for_query, 'dealership_id'))
 
-                wanted_user_id_indices = get_exist_lists(user_profile_dict[unique_user_field_for_dict],
-                                                         db_user_profiles_fk_ids.values_list(
-                                                             unique_user_field_for_query,
-                                                             flat=True).distinct())
+            if create_if_not_exist:
+                # CREATE USERS
+                new_users_values_to_create_dict = self.get_obj_values_as_dict("user", user_profile_dict,
+                                                                              non_exist_user_id_indices,
+                                                                              unique_user_field_for_dict)
+                self.create_objects("user", **new_users_values_to_create_dict)
 
-                wanted_dealership_id_indices = get_exist_lists(user_profile_dict['dealership_id'],
-                                                               db_user_profiles_fk_ids.values_list("dealership_id",
-                                                                                                   flat=True).
-                                                               distinct())
-                all_indices_list = list(range(0, len(user_profile_dict[unique_user_field_for_dict])))
+                # CREATE DEALERSHIPS
+                new_dealerships_values_to_create_dict = self.get_obj_values_as_dict("dealership", user_profile_dict,
+                                                                                    non_exist_dealership_id_indices,
+                                                                                    unique_user_field_for_dict)
+                self.create_objects("dealership", **new_dealerships_values_to_create_dict)
 
-            else:
-                wanted_user_id_indices = wanted_dealership_id_indices = all_indices_list = list(
-                    range(0, len(user_profile_dict[unique_user_field_for_dict])))
-            # 1- user_id
-            # 2- username
-            # 3- firstname+lastname
-
-            new_users_values_to_create_dict = self.get_obj_values_as_dict("user", user_profile_dict,
-                                                                          wanted_user_id_indices,
-                                                                          unique_user_field_for_dict)
-            new_dealerships_values_to_create_dict = self.get_obj_values_as_dict("dealership", user_profile_dict,
-                                                                                wanted_dealership_id_indices)
-
-            self.create_objects("user", unique_user_field_for_dict, **new_users_values_to_create_dict)
-            self.create_objects("dealership", **new_dealerships_values_to_create_dict)
+                intersection_of_lists = non_exist_user_profile_id_indices
+            else:  # Send only exist users and dealerships
+                intersection_of_lists = set(non_exist_user_profile_id_indices) & set(exist_user_id_indices) & set(
+                    exist_dealership_id_indices)
 
             user_profiles_values_to_create_dict = self.get_obj_values_as_dict("userprofile", user_profile_dict,
-                                                                              all_indices_list,
-                                                                              unique_user_field_for_dict)
-            self.create_objects("userprofile", unique_user_field_for_dict, **user_profiles_values_to_create_dict)
+                                                                              intersection_of_lists)
+            self.create_objects("userprofile", **user_profiles_values_to_create_dict)
+
+            # Get User values to update then UPDATE USERS
+            users_values_to_update_dict = self.get_obj_values_as_dict("user", user_profile_dict,
+                                                                      exist_user_id_indices, unique_user_field_for_dict)
+            updatable_users = self.get_exist_objects("user", user_profile_dict[unique_user_field_for_dict],
+                                                     db_user_profiles)
+            self.update_objects("user", updatable_users, **users_values_to_update_dict)
+
+            # Get Dealership values to update then UPDATE DEALERSHIPS
+            dealerships_values_to_update_dict = self.get_obj_values_as_dict("dealership", user_profile_dict,
+                                                                            exist_dealership_id_indices,
+                                                                            unique_user_field_for_dict)
+            updatable_dealerships = self.get_exist_objects("dealership", user_profile_dict["dealership_id"],
+                                                           db_user_profiles)
+            self.update_objects("dealership", updatable_dealerships, **dealerships_values_to_update_dict)
+
+            # Get User Profile values to update then UPDATE USER PROFILES
+            user_profiles_values_to_update_dict = self.get_obj_values_as_dict("userprofile", user_profile_dict,
+                                                                              exist_user_profile_id_indices)
+            query = reduce(operator.or_, (Q(user_id=u_id, dealership_id=d_id) for u_id, d_id in
+                                          zip(user_profiles_values_to_update_dict['user_id'],
+                                              user_profiles_values_to_update_dict['dealership_id'])))
+            updatable_user_profiles = UserProfile.objects.filter(query)
+            self.update_objects("userprofile", updatable_user_profiles, **user_profiles_values_to_update_dict)
 
             return redirect("/admin/user/userprofile")
 
@@ -258,11 +280,12 @@ class UserProfileAdmin(admin.ModelAdmin):
                 new_obj_values_dict["is_active"] = [True for _ in wanted_rows_indices]
 
             if unique_user_field_for_dict != "user_id":
+                query_list = [user_profile_dict["username"][i] for i in wanted_rows_indices]
                 preserved = Case(
-                    *[When(username=val, then=pos) for pos, val in enumerate(user_profile_dict['username'])],
-                    default=len(user_profile_dict['username']))
+                    *[When(username=val, then=pos) for pos, val in enumerate(query_list)],
+                    default=len(query_list))
                 new_obj_values_dict['user_id'] = list(User.objects.annotate(
-                    my_user_id=Case(When(username__in=user_profile_dict['username'], then='id'), )).filter(
+                    my_user_id=Case(When(username__in=query_list, then='id'), )).filter(
                     id__in=F('my_user_id')).values_list('my_user_id', flat=True).order_by(preserved))
 
         else:
@@ -324,6 +347,88 @@ class UserProfileAdmin(admin.ModelAdmin):
             print(f"{e} Happened When Creating {model_str}")
 
         return created_objects
+
+    @staticmethod
+    def update_objects(model_str, updatable_objects, unique_user_field_for_dict=None, **kwargs):
+        updated_objects = None
+        try:
+            if model_str == 'user':
+                if unique_user_field_for_dict == "user_id":
+                    unique_field_list = [updatable_object.id for updatable_object in updatable_objects]
+                else:
+                    unique_field_list = [updatable_object.username for updatable_object in updatable_objects]
+
+                exist_objects_indices = reorder_list(unique_field_list, kwargs[unique_user_field_for_dict])
+                kwargs.pop(unique_user_field_for_dict)
+            elif model_str == 'dealership':
+                unique_field_list = [updatable_object.id for updatable_object in updatable_objects]
+                exist_objects_indices = reorder_list(unique_field_list, kwargs["id"])
+                kwargs.pop("id")
+            elif model_str == 'userprofile':
+                if unique_user_field_for_dict == "user_id":
+                    unique_field_list = [(updatable_object.user.id, updatable_object.dealership.id) for updatable_object
+                                         in updatable_objects]
+                else:
+                    unique_field_list = [(updatable_object.user.username, updatable_object.dealership.id) for
+                                         updatable_object in updatable_objects]
+                exist_objects_indices = reorder_list(
+                    unique_field_list, merge_lists(kwargs[unique_user_field_for_dict], kwargs['dealership_id']))
+            else:
+                raise Exception('Unknown Model')
+
+            for obj, index in zip(updatable_objects, exist_objects_indices):
+                for key, values in kwargs.items():
+                    setattr(obj, key, values[index])
+
+            if model_str == 'user':
+                updated_objects = User.objects.bulk_update(updatable_objects, kwargs.keys())
+            elif model_str == 'dealership':
+                updated_objects = Dealership.objects.bulk_update(updatable_objects, kwargs.keys())
+            elif model_str == 'userprofile':
+                updated_objects = UserProfile.objects.bulk_update(updatable_objects, kwargs.keys())
+        except Exception as e:
+            print(f"{e} Happened When Updating {model_str}")
+        return updated_objects
+
+    @staticmethod
+    def get_exist_and_non_exist_lists(list_from_input, id_list):
+        # Get all ids from model objects
+        not_exist_id_indices = []
+        exist_id_indices = []
+        try:
+            index = 0
+            for obj_id in list_from_input:
+                if obj_id in id_list:
+                    exist_id_indices.append(index)
+                else:
+                    not_exist_id_indices.append(index)
+                index += 1
+
+        except Exception as e:
+            print(f"Exception Happened for {id_list} | {e}")
+
+        return not_exist_id_indices, exist_id_indices
+
+    @staticmethod
+    def get_exist_objects(model_str, list_from_input, db_user_profiles, unique_user_field_for_dict=None):
+        exist_objects = []
+        if model_str == "user":
+            for user_profile in db_user_profiles:
+                if unique_user_field_for_dict == "user_id":
+                    if user_profile.user.id in list_from_input and user_profile.user not in exist_objects:
+                        exist_objects.append(user_profile.user)
+                else:
+                    if user_profile.user.username in list_from_input and user_profile.user not in exist_objects:
+                        exist_objects.append(user_profile.user)
+        if model_str == "dealership":
+            for user_profile in db_user_profiles:
+                if user_profile.dealership.id in list_from_input and user_profile.dealership not in exist_objects:
+                    exist_objects.append(user_profile.dealership)
+        if model_str == "dealership":
+            for user_profile in db_user_profiles:
+                if user_profile.id in list_from_input and user_profile not in exist_objects:
+                    exist_objects.append(user_profile)
+        return exist_objects
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
