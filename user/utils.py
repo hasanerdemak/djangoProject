@@ -283,4 +283,4 @@ def get_unique_field_name_for_query_and_dict(user_profile_dict):
         unique_user_field_for_dict = None
         unique_user_field_for_query = None
 
-    return unique_user_field_for_dict, unique_user_field_for_query,scenario
+    return unique_user_field_for_dict, unique_user_field_for_query, scenario

@@ -280,19 +280,18 @@ class UserProfileAdmin(admin.ModelAdmin):
         created_objects = None
         try:
             if model_str == 'user':
-                kwargs["password"] = [make_password(''.join(random.choice(self.characters) for _ in range(8)))
-                                      for _ in range(len(kwargs[unique_user_field_for_dict]))]
                 if unique_user_field_for_dict == 'user_id':
                     unique_fields = ['id']
                 else:
                     unique_fields = ['username']
-
+                kwargs["password"] = [make_password(''.join(random.choice(self.characters) for _ in range(8)))
+                                      for _ in range(len(kwargs[unique_fields[0]]))]
                 field_list = [model_field[1].attname for model_field in enumerate(User._meta.fields)]
                 field_list.pop(field_list.index("id"))
                 field_list.pop(field_list.index("username"))
 
                 User.objects.bulk_create([User(**{key: values[i] for key, values in kwargs.items()})
-                                          for i in range(len(kwargs[unique_user_field_for_dict]))],
+                                          for i in range(len(kwargs[unique_fields[0]]))],
                                          update_conflicts=True,
                                          unique_fields=unique_fields,
                                          update_fields=field_list)
