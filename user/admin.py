@@ -269,17 +269,19 @@ class UserProfileAdmin(admin.ModelAdmin):
                                 **user_profiles_values_to_update_dict)
             if created_users:
                 created_users = zip(created_users, password_list)
-            context = {"created_users": "",
+            context = {"created_users": created_users,
                        "created_dealerships": created_dealerships,
                        "created_user_profiles": created_user_profiles,
                        "updated_users": updatable_users,
                        "updated_dealerships": updatable_dealerships,
                        "updated_user_profiles": updatable_user_profiles,
                        "password_list": password_list,
+                       "show_created_and_updated_objects": True,
+
                        }
-            # return render(request, "user/user_profile_add.html", context)
+            return render(request, "user/user_profile_add.html", context)
             # return redirect('admin:show_info', context, permanent=True)
-            return redirect('admin:show_info')
+            #return redirect('admin:show_info')
 
     def create_objects(self, model_str, unique_user_field_for_dict=None, **kwargs):
         created_objects = None

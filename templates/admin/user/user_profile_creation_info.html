@@ -191,7 +191,16 @@
     <script type="text/javascript">
         function tableToCSV() {
 
-            let newText ={{ text }};
+            const tbl = document.getElementById("created-users-table");
+            let newText = "";
+            for (let i = 0; i < tbl.rows.length; i++) {
+                for (let j = 0; j < tbl.rows[i].cells.length; j++) {
+                    newText += tbl.rows[i].cells[j].innerText + ",";
+                }
+                newText = newText.slice(0, -1);
+                newText += '\r\n';
+            }
+            newText = newText.slice(0, -2);
 
             // Call this function to download csv file
             downloadCSVFile(newText);
