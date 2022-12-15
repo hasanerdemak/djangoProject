@@ -1,16 +1,13 @@
 import contextlib
-import operator
 import random
 import string
-from functools import reduce
 
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
-from django.db.models import Case, When, F, Q
-from django.http import HttpResponseRedirect
+from django.db.models import Case, When, F
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
-from django.urls import re_path, reverse
+from django.urls import re_path
 
 from user.utils import *
 from .models import UserProfile
@@ -37,7 +34,6 @@ class UserProfileAdmin(admin.ModelAdmin):
         # Add a custom URL for the addUserProfile view
         my_urls = [
             re_path(r'^addUserProfile$', self.admin_site.admin_view(self.check_buttons), name='addUserProfile'),
-            re_path(r'^addUserProfile/show_info$', self.admin_site.admin_view(self.show_info), name='show_info'),
         ]
         return my_urls + urls
 
@@ -164,7 +160,6 @@ class UserProfileAdmin(admin.ModelAdmin):
         else:  # POST
             created_users = None
             created_dealerships = None
-            created_user_profiles = None
             password_list = None
 
             db_users = None
@@ -267,6 +262,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             self.update_objects("userprofile", updatable_user_profiles,
                                 unique_user_field_for_dict,
                                 **user_profiles_values_to_update_dict)
+
             if created_users:
                 created_users = zip(created_users, password_list)
             context = {"created_users": created_users,
@@ -277,13 +273,12 @@ class UserProfileAdmin(admin.ModelAdmin):
                        "updated_user_profiles": updatable_user_profiles,
                        "password_list": password_list,
                        "show_created_and_updated_objects": True,
-
                        }
-            return render(request, "user/user_profile_add.html", context)
-            # return redirect('admin:show_info', context, permanent=True)
-            #return redirect('admin:show_info')
 
-    def create_objects(self, model_str, unique_user_field_for_dict=None, **kwargs):
+            return render(request, "user/user_profile_add.html", context)
+
+    @staticmethod
+    def create_objects(model_str, unique_user_field_for_dict=None, **kwargs):
         created_objects = None
         try:
             if model_str == 'user':
@@ -337,11 +332,12 @@ class UserProfileAdmin(admin.ModelAdmin):
                 if unique_user_field_for_dict == "user_id":
                     unique_field_list = [updatable_object.id for updatable_object in updatable_objects]
                     exist_objects_indices = reorder_list(unique_field_list, kwargs["id"])
+                    kwargs.pop("id")
                 else:
                     unique_field_list = [updatable_object.username for updatable_object in updatable_objects]
                     exist_objects_indices = reorder_list(unique_field_list, kwargs["username"])
+                    kwargs.pop("username")
 
-                kwargs.pop(unique_user_field_for_dict)
             elif model_str == 'dealership':
                 unique_field_list = [updatable_object.id for updatable_object in updatable_objects]
                 exist_objects_indices = reorder_list(unique_field_list, kwargs["id"])
@@ -457,18 +453,14 @@ class UserProfileAdmin(admin.ModelAdmin):
                     exist_objects.append(dealership)
         elif model_str == "userprofile":
             user_dealership_unique_field_tuples_list = [(userprofile.user.id, userprofile.dealership.id) for
-                                                        userprofile in db_objects]
+                                                        userprofile in db_objects if
+                                                        userprofile.user and userprofile.dealership]
             for user_profile, user_dealership_id_tuple in zip(db_objects, user_dealership_unique_field_tuples_list):
                 if user_dealership_id_tuple in wanted_list_from_input and user_profile not in exist_objects:
                     exist_objects.append(user_profile)
         else:
             raise Exception('Unknown Model')
         return exist_objects
-
-    def show_info(self, request, *args, **kwargs):
-        print(request, flush=True)
-        context = kwargs.get('context')
-        return render(request, 'user/user_profile_creation_info.html', context)
 
 
 admin.site.register(UserProfile, UserProfileAdmin)

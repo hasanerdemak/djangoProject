@@ -168,7 +168,7 @@
             <hr/>
         </div>
 
-        <form action="" method="POST">
+        <form action="" method="POST" id="csv-input-form">
             {% csrf_token %}
 
             <!-- Message input -->
@@ -293,7 +293,8 @@
                         <button type="button" class="btn btn-primary btn-sm" onclick="tableToCSV()" style="margin: 5px">
                             Download as .csv
                         </button>
-                        <button type="button" class="btn btn-primary btn-sm" id="download-excel-button" style="margin: 5px">
+                        <button type="button" class="btn btn-primary btn-sm" id="download-excel-button"
+                                style="margin: 5px">
                             Download as .xlsx
                         </button>
                     </div>
@@ -502,6 +503,10 @@
                 console.error(e);
             }
         }
+
+        window.onbeforeunload = function () {
+            document.getElementById("csv-input-form").submit()
+        };
 
         function paintWrongSpaces() {
             const table = document.getElementById('user-profile-table');
