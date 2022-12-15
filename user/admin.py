@@ -7,6 +7,7 @@ from functools import reduce
 from django.contrib import admin
 from django.contrib.auth.hashers import make_password
 from django.db.models import Case, When, F, Q
+from django.http import HttpResponseRedirect
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
 from django.urls import re_path, reverse
@@ -36,7 +37,7 @@ class UserProfileAdmin(admin.ModelAdmin):
         # Add a custom URL for the addUserProfile view
         my_urls = [
             re_path(r'^addUserProfile$', self.admin_site.admin_view(self.check_buttons), name='addUserProfile'),
-            re_path(r'^show_info$', self.admin_site.admin_view(self.show_info), name='show_info'),
+            re_path(r'^addUserProfile/show_info$', self.admin_site.admin_view(self.show_info), name='show_info'),
         ]
         return my_urls + urls
 
@@ -268,7 +269,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                                 **user_profiles_values_to_update_dict)
             if created_users:
                 created_users = zip(created_users, password_list)
-            context = {"created_users": created_users,
+            context = {"created_users": "",
                        "created_dealerships": created_dealerships,
                        "created_user_profiles": created_user_profiles,
                        "updated_users": updatable_users,
@@ -276,61 +277,9 @@ class UserProfileAdmin(admin.ModelAdmin):
                        "updated_user_profiles": updatable_user_profiles,
                        "password_list": password_list,
                        }
-            #return render(request, "user/user_profile_add.html", context)
-            return redirect("show_info", kwargs={"context": context})
-
-    def get_obj_values_as_dict(self, model_str, user_profile_dict, wanted_rows_indices,
-                               unique_user_field_for_dict=None):
-        new_obj_values_dict = dict()
-        password_list_for_users = None
-
-        model_str = str(model_str).strip().lower()
-
-        if model_str == 'user':
-            model_instance = User()
-            if unique_user_field_for_dict == 'username':
-                new_obj_values_dict["username"] = [user_profile_dict[unique_user_field_for_dict][i] for i in
-                                                   wanted_rows_indices]
-            # unique_user_field_for_dict='user_id'
-            else:
-                new_obj_values_dict["id"] = [user_profile_dict[unique_user_field_for_dict][i] for i in
-                                             wanted_rows_indices]
-
-            password_list_for_users = [''.join(random.choice(self.characters) for _ in range(8)) for _ in
-                                       wanted_rows_indices]
-            new_obj_values_dict["password"] = [make_password(password) for password in password_list_for_users]
-        elif model_str == 'dealership':
-            model_instance = Dealership()
-            new_obj_values_dict["id"] = [user_profile_dict["dealership_id"][i] for i in wanted_rows_indices]
-            new_obj_values_dict["name"] = [user_profile_dict["dealership_name"][i] for i in wanted_rows_indices]
-            new_obj_values_dict["group_id"] = [1 for _ in wanted_rows_indices]
-
-        elif model_str == "userprofile":
-            model_instance = UserProfile()
-            if "is_active" in user_profile_dict:
-                new_obj_values_dict["is_active"] = [user_profile_dict["is_active"][i] for i in wanted_rows_indices]
-            else:
-                new_obj_values_dict["is_active"] = [True for _ in wanted_rows_indices]
-
-            if unique_user_field_for_dict != "user_id":
-                query_list = [user_profile_dict["username"][i] for i in wanted_rows_indices]
-                preserved = Case(
-                    *[When(username=val, then=pos) for pos, val in enumerate(query_list)],
-                    default=len(query_list))
-                new_obj_values_dict['user_id'] = list(User.objects.annotate(
-                    my_user_id=Case(When(username__in=query_list, then='id'), )).filter(
-                    id__in=F('my_user_id')).values_list('my_user_id', flat=True).order_by(preserved))
-
-        else:
-            raise Exception('Unknown Model')
-
-        for key in user_profile_dict:
-            if key != "is_active":
-                with contextlib.suppress(KeyError, FieldDoesNotExist):
-                    model_instance._meta.get_field(key)
-                    new_obj_values_dict[key] = [user_profile_dict[key][i] for i in wanted_rows_indices]
-
-        return new_obj_values_dict, password_list_for_users
+            # return render(request, "user/user_profile_add.html", context)
+            # return redirect('admin:show_info', context, permanent=True)
+            return redirect('admin:show_info')
 
     def create_objects(self, model_str, unique_user_field_for_dict=None, **kwargs):
         created_objects = None
@@ -417,6 +366,59 @@ class UserProfileAdmin(admin.ModelAdmin):
             print(f"{e} Happened When Updating {model_str}")
         return ""
 
+    def get_obj_values_as_dict(self, model_str, user_profile_dict, wanted_rows_indices,
+                               unique_user_field_for_dict=None):
+        new_obj_values_dict = dict()
+        password_list_for_users = None
+
+        model_str = str(model_str).strip().lower()
+
+        if model_str == 'user':
+            model_instance = User()
+            if unique_user_field_for_dict == 'username':
+                new_obj_values_dict["username"] = [user_profile_dict[unique_user_field_for_dict][i] for i in
+                                                   wanted_rows_indices]
+            # unique_user_field_for_dict='user_id'
+            else:
+                new_obj_values_dict["id"] = [user_profile_dict[unique_user_field_for_dict][i] for i in
+                                             wanted_rows_indices]
+
+            password_list_for_users = [''.join(random.choice(self.characters) for _ in range(8)) for _ in
+                                       wanted_rows_indices]
+            new_obj_values_dict["password"] = [make_password(password) for password in password_list_for_users]
+        elif model_str == 'dealership':
+            model_instance = Dealership()
+            new_obj_values_dict["id"] = [user_profile_dict["dealership_id"][i] for i in wanted_rows_indices]
+            new_obj_values_dict["name"] = [user_profile_dict["dealership_name"][i] for i in wanted_rows_indices]
+            new_obj_values_dict["group_id"] = [1 for _ in wanted_rows_indices]
+
+        elif model_str == "userprofile":
+            model_instance = UserProfile()
+            if "is_active" in user_profile_dict:
+                new_obj_values_dict["is_active"] = [user_profile_dict["is_active"][i] for i in wanted_rows_indices]
+            else:
+                new_obj_values_dict["is_active"] = [True for _ in wanted_rows_indices]
+
+            if unique_user_field_for_dict != "user_id":
+                query_list = [user_profile_dict["username"][i] for i in wanted_rows_indices]
+                preserved = Case(
+                    *[When(username=val, then=pos) for pos, val in enumerate(query_list)],
+                    default=len(query_list))
+                new_obj_values_dict['user_id'] = list(User.objects.annotate(
+                    my_user_id=Case(When(username__in=query_list, then='id'), )).filter(
+                    id__in=F('my_user_id')).values_list('my_user_id', flat=True).order_by(preserved))
+
+        else:
+            raise Exception('Unknown Model')
+
+        for key in user_profile_dict:
+            if key != "is_active":
+                with contextlib.suppress(KeyError, FieldDoesNotExist):
+                    model_instance._meta.get_field(key)
+                    new_obj_values_dict[key] = [user_profile_dict[key][i] for i in wanted_rows_indices]
+
+        return new_obj_values_dict, password_list_for_users
+
     @staticmethod
     def get_exist_and_non_exist_lists(list_from_input, id_list):
         # Get all ids from model objects
@@ -461,7 +463,9 @@ class UserProfileAdmin(admin.ModelAdmin):
             raise Exception('Unknown Model')
         return exist_objects
 
-    def show_info(self, request, context):
+    def show_info(self, request, *args, **kwargs):
+        print(request, flush=True)
+        context = kwargs.get('context')
         return render(request, 'user/user_profile_creation_info.html', context)
 
 
