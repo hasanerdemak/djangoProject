@@ -209,20 +209,23 @@ def get_non_unique_spaces_indices_and_messages(user_profile_dict, scenario):
     return non_unique_rows, non_unique_cols, non_unique_messages
 
 
-def get_exist_lists(list_from_input, id_list):
+def get_exist_and_non_exist_lists(list_from_input, id_list):
     # Get all ids from model objects
+    not_exist_id_indices = []
     exist_id_indices = []
     try:
         index = 0
         for obj_id in list_from_input:
             if obj_id in id_list:
                 exist_id_indices.append(index)
+            else:
+                not_exist_id_indices.append(index)
             index += 1
 
     except Exception as e:
         print(f"Exception Happened for {id_list} | {e}")
 
-    return exist_id_indices
+    return not_exist_id_indices, exist_id_indices
 
 
 def check_which_scenario(text_keys):
