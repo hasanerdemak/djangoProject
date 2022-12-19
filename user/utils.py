@@ -228,6 +228,33 @@ def get_exist_and_non_exist_lists(list_from_input, id_list):
     return not_exist_id_indices, exist_id_indices
 
 
+def get_exist_and_non_exist_objects(model_str, obj_list, unique_value_list, unique_user_field_for_user_query):
+    # Get all ids from model objects
+    exist_objects = []
+    non_exist_objects = []
+    try:
+        if model_str == "user":
+            for user in reversed(obj_list):
+                if getattr(user, unique_user_field_for_user_query) in unique_value_list:
+                    if user not in exist_objects:
+                        exist_objects.append(user)
+                elif user not in non_exist_objects:
+                    non_exist_objects.append(user)
+        if model_str == "dealership":
+            for dealership in reversed(obj_list):
+                if dealership.id in unique_value_list:
+                    if dealership not in exist_objects:
+                        exist_objects.append(dealership)
+                elif dealership not in non_exist_objects:
+                    non_exist_objects.append(dealership)
+
+
+    except Exception as e:
+        print(f"Exception Happened for {unique_value_list} | {e}")
+
+    return exist_objects, non_exist_objects
+
+
 def check_which_scenario(text_keys):
     if 'user_id' in text_keys:
         return 1
@@ -251,8 +278,8 @@ def set_required_fields_with_scenario(required_fields, text_keys):
     return required_fields, scenario
 
 
-def get_unique_field_name_for_query_and_dict(user_profile_dict):
-    scenario = check_which_scenario(user_profile_dict.keys())
+def get_unique_field_name_for_query_and_dict(text_keys):
+    scenario = check_which_scenario(text_keys)
 
     if scenario == 1:
         unique_user_field_for_dict = 'user_id'
@@ -263,9 +290,6 @@ def get_unique_field_name_for_query_and_dict(user_profile_dict):
         unique_user_field_for_dict = 'username'
         unique_user_field_for_user_query = 'username'
         unique_user_field_for_user_profile_query = 'user__username'
-        if scenario == 3:
-            user_profile_dict['username'] = list(
-                map(str.__add__, user_profile_dict['first_name'], user_profile_dict['last_name']))
     else:
         unique_user_field_for_dict = None
         unique_user_field_for_user_query = None
