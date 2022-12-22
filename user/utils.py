@@ -1,5 +1,7 @@
+import csv
 import re
 from collections import Counter
+from io import StringIO
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -72,6 +74,13 @@ def indices_of_non_unique_cells(value_list):
     return [index for index in range(len(value_list)) if freq[value_list[index]] > 1]
 
 
+def get_non_valid_field_indices(field_list):
+    field_names = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
+    field_names += UserProfile().property_names()
+
+    return [index for index, field_name in enumerate(field_list) if field_name not in field_names]
+
+
 def increase_list_values(value_list, increase_amount):
     return [value + increase_amount
             for value in value_list]
@@ -106,11 +115,62 @@ def read_csv_as_dict(text):
     return user_profile_dict
 
 
-def get_non_valid_field_indices(field_list):
-    field_names = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
-    field_names += UserProfile().property_names()
+def create_obj_lists_from_csv(csv_string):
+    user_list = []
+    dealership_list = []
+    user_profile_list = []
 
-    return [index for index, field_name in enumerate(field_list) if field_name not in field_names]
+    user_fields_list = [model_field[1].attname for model_field in enumerate(User._meta.fields)]
+    dealership_fields_list = [model_field[1].attname for model_field in enumerate(Dealership._meta.fields)]
+    user_profile_fields_list = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
+
+    # Use the StringIO class to create a file-like object from the CSV string
+    f = StringIO(csv_string)
+    # Create a DictReader object
+    reader = csv.DictReader(f)
+
+    # Read the CSV string into a list of dictionaries
+    data = list(reader)
+
+    csv_keys = data[0].keys()
+    scenario = check_which_scenario(csv_keys)
+
+    # Loop through the list of dictionaries
+    # Traverse the data in reverse to make sure the last entity of the objects is in the list
+    for row in reversed(data):
+        user = User()
+        dealership = Dealership()
+        user_profile = UserProfile()
+        for key, value in row.items():
+            if str(key).endswith("id"):
+                value = int(value)
+
+            if key.replace("user_", "") in user_fields_list and key != "is_active":  # User
+                user.__setattr__(key.replace("user_", ""), value)
+            elif key.replace("dealership_", "") in dealership_fields_list:  # Dealership
+                dealership.__setattr__(key.replace("dealership_", ""), value)
+            elif key in user_profile_fields_list:  # User Profile
+                user_profile.__setattr__(key, value)
+
+        # if username does not exist in the input
+        if scenario != 2:
+            user.username = user.first_name + user.last_name
+
+        if user not in user_list:
+            user_list.append(user)
+            user_profile.user = user
+        else:
+            user_profile.user = user_list[user_list.index(user)]
+
+        if dealership not in dealership_list:
+            dealership_list.append(dealership)
+            user_profile.dealership = dealership
+        else:
+            user_profile.dealership = dealership_list[dealership_list.index(dealership)]
+
+        user_profile_list.append(user_profile)
+
+    return user_list, dealership_list, user_profile_list, csv_keys
 
 
 def get_col_type(col_name):
@@ -248,7 +308,6 @@ def get_exist_and_non_exist_objects(model_str, obj_list, unique_value_list, uniq
                 elif dealership not in non_exist_objects:
                     non_exist_objects.append(dealership)
 
-
     except Exception as e:
         print(f"Exception Happened for {unique_value_list} | {e}")
 
@@ -276,26 +335,6 @@ def set_required_fields_with_scenario(required_fields, text_keys):
         required_fields.append('last_name')
 
     return required_fields, scenario
-
-
-def get_unique_field_name_for_query_and_dict(text_keys):
-    scenario = check_which_scenario(text_keys)
-
-    if scenario == 1:
-        unique_user_field_for_dict = 'user_id'
-        unique_user_field_for_user_query = 'id'
-        unique_user_field_for_user_profile_query = 'user_id'
-
-    elif scenario == 2 or scenario == 3:
-        unique_user_field_for_dict = 'username'
-        unique_user_field_for_user_query = 'username'
-        unique_user_field_for_user_profile_query = 'user__username'
-    else:
-        unique_user_field_for_dict = None
-        unique_user_field_for_user_query = None
-        unique_user_field_for_user_profile_query = None
-
-    return unique_user_field_for_dict, unique_user_field_for_user_query, unique_user_field_for_user_profile_query, scenario
 
 
 def update_same_usernames(list1, list2):

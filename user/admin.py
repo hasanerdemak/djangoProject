@@ -1,11 +1,9 @@
 import operator
 import string
-import csv
 from functools import reduce
-from io import StringIO
 
 from django.contrib import admin
-from django.db.models import Case, When, F, Q
+from django.db.models import Q
 from django.shortcuts import render, redirect
 from django.template.response import TemplateResponse
 from django.urls import re_path
@@ -79,8 +77,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             # Call the add_user_profile() method to create and update user, dealership and user profile
             return self.add_user_profile(request)
 
-    @staticmethod
-    def error_check(request):
+    def error_check(self, request):
         # Check if form-check-box-1 is clicked
         create_if_not_exist = True if (request.POST.get("form-check-box-1") is not None) else False
 
@@ -109,9 +106,9 @@ class UserProfileAdmin(admin.ModelAdmin):
         non_valid_field_indices = get_non_valid_field_indices(user_profile_dict.keys())
         # If there is no non-valid field then check other errors
         if not non_valid_field_indices:
-            non_exist_required_fields_list = [field for field in required_fields if field not in user_profile_dict]
-            # If there is no non-exist required field then check other errors
-            if not non_exist_required_fields_list:
+            non_existing_required_fields_list = [field for field in required_fields if field not in user_profile_dict]
+            # If there is no non-existing required field then check other errors
+            if not non_existing_required_fields_list:
                 # Missing spaces check
                 missing_spaces_rows, missing_spaces_cols, missing_spaces_messages = \
                     get_missing_spaces_indices_and_messages(user_profile_dict)
@@ -130,10 +127,10 @@ class UserProfileAdmin(admin.ModelAdmin):
                 else:  # is_valid is false
                     error = "Please Click On The Wrong Cells To Edit The Text"
 
-            else:  # If there is non-exist required field
+            else:  # If there is non-existing required field
                 non_valid_field_indices = []
                 show_table = "false"
-                error = f"{non_exist_required_fields_list} Field(s) Must Be Exist"
+                error = f"{non_existing_required_fields_list} Field(s) Must Be Exist"
         else:  # If there is non-valid field name
             error = "Please Correct The Field Names First"
 
@@ -160,144 +157,141 @@ class UserProfileAdmin(admin.ModelAdmin):
         if request.method == "GET":
             return redirect("/admin/user/userprofile")
         else:  # POST
-            created_users = None
-            created_dealerships = None
-            created_user_profiles = None
-            password_list_for_users = None
-
-            db_users = None
-            db_dealerships = None
-            db_user_profiles = None
-            try:
-                # Fetch all user and dealership ids over UserProfile table
-                db_users = User.objects.all()
-                db_dealerships = Dealership.objects.all()
-                db_user_profiles = UserProfile.objects.select_related("user", "dealership")
-            except Exception as e:
-                print(f"{e} Happened When Fetching Objects From DB")
+            created_users = []
+            created_dealerships = []
+            created_user_profiles = []
+            password_list_for_users = []
 
             create_if_not_exist = True if (request.POST.get("form-check-box-1") is not None) else False
             # Get the text in the "form-text-area" and remove any trailing new line characters
             text = request.POST.get("form-text-area").rstrip("\r\n")
 
-            user_list, dealership_list, user_profile_list, csv_keys = self.abc(text)
+            user_list, dealership_list, user_profile_list, csv_keys = create_obj_lists_from_csv(text)
 
             """
-            Scenario 1: user_id exists
-            Scenario 2: user_id not exists, but username exists
-            Scenario 3: user_id not exists, username not exists, but first_name and last_name exist 
+                Scenario 1: user_id exists
+                Scenario 2: user_id not exists, but username exists
+                Scenario 3: user_id not exists, username not exists, but first_name and last_name exist 
             """
-            unique_user_field_for_dict, unique_user_field_for_user_query, unique_user_field_for_user_profile_query, \
-            scenario = get_unique_field_name_for_query_and_dict(csv_keys)
+            scenario = check_which_scenario(csv_keys)
+            unique_user_field_for_user_query = "id" if scenario == 1 else "username"
+
+            db_user_ids_and_usernames = None
+            db_dealership_ids_set = None
+            db_user_profile_unique_values_set = None
+            try:
+                db_user_ids_and_usernames = User.objects.only("id", "username").values_list("id", "username")
+                db_dealership_ids_set = set(Dealership.objects.only("id").filter(
+                    id__in=[dealership.id for dealership in dealership_list]).values_list("id", flat=True))
+                # Determine the fields to retrieve
+                fields = ("user_id", "dealership_id") if scenario == 1 else ("user__username", "dealership_id")
+                # Use .only() or .defer() to select only the necessary fields
+                db_user_profile_unique_values_set = set(UserProfile.objects.only(*fields).values_list(*fields))
+            except Exception as e:
+                print(f"{e} Happened When Fetching Objects From DB")
 
             # If scenario is 3, then update same usernames
             if scenario == 3:
-                username_list = [user.username for user in user_list]
-                username_list = update_same_usernames(username_list, list(db_users.values_list("username", flat=True)))
-                for i in range(len(user_list)):
-                    user_list[i].username = username_list[i]
+                # Get the list of existing usernames from the database and update the same usernames in the list
+                updated_usernames = update_same_usernames([user.username for user in user_list],
+                                                          db_user_ids_and_usernames.values_list("username", flat=True))
+                [setattr(user_list[i], 'username', updated_usernames[i]) for i in range(len(user_list))]
 
-            db_users_unique_value_list = db_users.values_list(unique_user_field_for_user_query, flat=True)
-            exist_users = []
-            non_exist_users = []
-            for user in reversed(
-                    user_list):  # I traversed the list in reverse to make sure the last entity of the object is in the list
-                if getattr(user, unique_user_field_for_user_query) in db_users_unique_value_list:
-                    if user not in exist_users:
-                        exist_users.append(user)
-                elif user not in non_exist_users:
-                    non_exist_users.append(user)
+            # Get existing and non-existing users to update or create them
+            db_users_unique_values_set = set(
+                db_user_ids_and_usernames.values_list(unique_user_field_for_user_query, flat=True))
+            existing_users = [user for user in user_list if
+                              getattr(user, unique_user_field_for_user_query) in db_users_unique_values_set]
+            non_existing_users = [user for user in user_list if
+                                  getattr(user, unique_user_field_for_user_query) not in db_users_unique_values_set]
 
-            db_dealerships_unique_value_list = db_dealerships.values_list("id", flat=True)
-            exist_dealerships = []
-            non_exist_dealerships = []
-            for dealership in reversed(dealership_list):
-                if dealership.id in db_dealerships_unique_value_list:
-                    if dealership not in exist_dealerships:
-                        exist_dealerships.append(dealership)
-                elif dealership not in non_exist_dealerships:
-                    non_exist_dealerships.append(dealership)
+            # Get existing and non-existing dealerships to update or create them
+            existing_dealerships = [dealership for dealership in dealership_list if
+                                    dealership.id in db_dealership_ids_set]
+            non_existing_dealerships = [dealership for dealership in dealership_list if
+                                        dealership.id not in db_dealership_ids_set]
 
-
-            db_user_profiles_unique_value_list = db_user_profiles.values_list(unique_user_field_for_user_profile_query,
-                                                                              'dealership_id')
-            exist_user_profiles = []
-            non_exist_user_profiles = []
-            for user_profile in reversed(user_profile_list):
-                if (getattr(user_profile.user, unique_user_field_for_user_query), user_profile.dealership_id) in db_user_profiles_unique_value_list:
-                    if user_profile not in exist_user_profiles:
-                        exist_user_profiles.append(user_profile)
-                elif user_profile not in non_exist_user_profiles:
-                    non_exist_user_profiles.append(user_profile)
+            # Get existing and non-existing user_profiles to update or create them
+            existing_user_profiles = [user_profile for user_profile in user_profile_list if (
+                getattr(user_profile.user, unique_user_field_for_user_query),
+                user_profile.dealership_id) in db_user_profile_unique_values_set]
+            non_existing_user_profiles = [user_profile for user_profile in user_profile_list if (
+                getattr(user_profile.user, unique_user_field_for_user_query),
+                user_profile.dealership_id) not in db_user_profile_unique_values_set]
 
             if create_if_not_exist:
-                # CREATE USERS
-                if len(non_exist_users) != 0:
-                    created_users, password_list_for_users = self.create_users(non_exist_users,
-                                                                               unique_user_field_for_user_query)
+                # Create non-existing Users
+                created_users, password_list_for_users = self.create_users(non_existing_users,
+                                                                           unique_user_field_for_user_query)
+                # Create non-existing Dealerships
+                created_dealerships = self.create_dealerships(non_existing_dealerships)
 
-                # CREATE DEALERSHIPS
-                if len(non_exist_dealerships) != 0:
-                    created_dealerships = self.create_dealerships(non_exist_dealerships)
+            else:
+                # If non-existing users and dealerships was not created,
+                # then send only user profiles that have existing users and dealerships
+                for i in range(len(non_existing_user_profiles)):
+                    if non_existing_user_profiles[i].user not in existing_users or \
+                            non_existing_user_profiles[i].dealership not in existing_dealerships:
+                        non_existing_user_profiles.pop(i)
 
-            else:  # Send only exist users and dealerships
-                for user_profile in non_exist_user_profiles:
-                    if user_profile.user not in exist_users or user_profile.dealership not in exist_dealerships:
-                        non_exist_user_profiles.pop(non_exist_user_profiles.index(user_profile))
+            # If the scenario is not 1, then we must have the ids of the Users that connected to User Profiles
+            if scenario != 1:
+                user_profiles_users = User.objects.select_for_update().filter(
+                    username__in=[user_profile.user.username for user_profile in user_profile_list])
 
-            if len(non_exist_user_profiles) != 0:
-                # To get the id fields of the created_users
-                if scenario != 1:
-                    user_list = User.objects.select_for_update().filter(
-                        username__in=[user.username for user in user_list])
-                    """
-                    Alternatively, you can use:
-                    for user in created_users:
-                        user.refresh_from_db()
-                    """
-                    for user_profile in user_profile_list:
-                        for user in user_list:
-                            if user.username == user_profile.user.username:
-                                user_profile.user.id = user.id
+                # Create a dictionary that maps username to user ID
+                username_to_id = {user.username: user.id for user in user_profiles_users}
+                # Use the dictionary to look up the user ID for each user profile
+                for user_profile in user_profile_list:
+                    user_id = username_to_id.get(user_profile.user.username)
+                    if user_id is not None:
+                        user_profile.user.id = user_id
 
-                created_user_profiles = self.create_user_profiles(non_exist_user_profiles)
+            if len(non_existing_user_profiles) != 0:
+                created_user_profiles = self.create_user_profiles(non_existing_user_profiles)
 
-            if len(exist_users) != 0:
-                self.update_users(exist_users, csv_keys)
+            # We need to have ids of the User Profiles to update them.
+            # To do that get user profiles values with user_id and dealership_id
+            query = reduce(operator.or_, (Q(user__id=user_profile.user.id) & Q(dealership_id=user_profile.dealership_id)
+                                          for user_profile in existing_user_profiles))
+            db_user_profiles = UserProfile.objects.filter(query)
 
-            if len(exist_dealerships) != 0:
-                self.update_dealerships(exist_dealerships, csv_keys)
+            db_user_profiles_dict = {(db_user_profile.user.id, db_user_profile.dealership.id): db_user_profile for
+                                     db_user_profile in db_user_profiles}
+            for user_profile in user_profile_list:
+                key = (user_profile.user.id, user_profile.dealership.id)
+                if key in db_user_profiles_dict:
+                    user_profile.id = db_user_profiles_dict[key].id
 
-            if len(exist_user_profiles) != 0:
-                query = reduce(operator.or_, (Q(user_id=u_id, dealership_id=d_id) for u_id, d_id in
-                                              zip([userprofile.user.id for userprofile in exist_user_profiles],
-                                                  [userprofile.dealership.id for userprofile in exist_user_profiles])))
-                exist_user_profiles_with_old_values = UserProfile.objects.filter(query)
+            # Update existing objects
+            self.update_users(existing_users, csv_keys)
+            self.update_dealerships(existing_dealerships, csv_keys)
+            self.update_user_profiles(existing_user_profiles, csv_keys)
 
-                for user_profile in exist_user_profiles:
-                    for db_user_profile in exist_user_profiles_with_old_values:
-                        if (user_profile.user.id, user_profile.dealership.id) == (
-                                db_user_profile.user.id, db_user_profile.dealership.id):
-                            user_profile.id = db_user_profile.id
-                # Get User Profile values to update then UPDATE USER PROFILES
-                self.update_user_profiles(exist_user_profiles, csv_keys)
+            created_user_profiles = [user_profile for user_profile in user_profile_list if
+                                     user_profile.is_active == "1" and user_profile in created_user_profiles]
+            existing_user_profiles = [user_profile for user_profile in user_profile_list if
+                                      user_profile.is_active == "1" and user_profile in existing_user_profiles]
+            deleted_user_profiles = [user_profile for user_profile in user_profile_list if
+                                     user_profile.is_active == "0"]
 
-            if created_users:
+            if len(created_users) != 0:
                 created_users = zip(created_users, password_list_for_users)
             context = {"created_users": created_users,
                        "created_dealerships": created_dealerships,
                        "created_user_profiles": created_user_profiles,
-                       "updated_users": exist_users,
-                       "updated_dealerships": exist_dealerships,
-                       "updated_user_profiles": exist_user_profiles,
+                       "updated_users": existing_users,
+                       "updated_dealerships": existing_dealerships,
+                       "updated_user_profiles": existing_user_profiles,
+                       "deleted_user_profiles": deleted_user_profiles,
                        "show_created_and_updated_objects": True,
                        }
 
             return render(request, "user/user_profile_add.html", context)
 
     def create_users(self, user_list_for_create, unique_field):
-        created_users = None
-        password_list_for_users = None
+        created_users = []
+        password_list_for_users = []
         try:
             field_list = [model_field[1].attname for model_field in enumerate(User._meta.fields)]
 
@@ -317,9 +311,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         return created_users, password_list_for_users
 
-    @staticmethod
-    def create_dealerships(dealership_list_for_create):
-        created_dealerships = None
+    def create_dealerships(self, dealership_list_for_create):
+        created_dealerships = []
         try:
             field_list = [model_field[1].attname for model_field in enumerate(Dealership._meta.fields)]
             field_list.pop(field_list.index("id"))
@@ -335,9 +328,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         return created_dealerships
 
-    @staticmethod
-    def create_user_profiles(user_profiles_list_for_create):
-        created_user_profiles = None
+    def create_user_profiles(self, user_profiles_list_for_create):
+        created_user_profiles = []
         try:
             field_list = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
             field_list.pop(field_list.index("id"))
@@ -354,10 +346,9 @@ class UserProfileAdmin(admin.ModelAdmin):
 
         return created_user_profiles
 
-    @staticmethod
-    def update_users(updatable_users, dict_keys):
+    def update_users(self, updatable_users, dict_keys):
         try:
-            updatable_fields = []
+            updatable_fields = ["username"]
             user_fields_list = [model_field[1].attname for model_field in enumerate(User._meta.fields)]
             for key in dict_keys:
                 if key.replace("user_", "") in user_fields_list and key != "user_id" and key != "is_active":
@@ -368,8 +359,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             print(f"{e} Happened When Updating User")
         return ""
 
-    @staticmethod
-    def update_dealerships(updatable_dealerships, dict_keys):
+    def update_dealerships(self, updatable_dealerships, dict_keys):
         try:
             updatable_fields = []
             dealership_fields_list = [model_field[1].attname for model_field in enumerate(Dealership._meta.fields)]
@@ -382,8 +372,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             print(f"{e} Happened When Updating Dealership")
         return ""
 
-    @staticmethod
-    def update_user_profiles(updatable_user_profiles, dict_keys):
+    def update_user_profiles(self, updatable_user_profiles, dict_keys):
         try:
             updatable_fields = []
             user_profile_fields_list = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
@@ -395,56 +384,6 @@ class UserProfileAdmin(admin.ModelAdmin):
         except Exception as e:
             print(f"{e} Happened When Updating User Profile")
         return ""
-
-    def abc(self, csv_string):
-        user_list = []
-        dealership_list = []
-        user_profile_list = []
-        csv_keys = []
-
-        user_fields_list = [model_field[1].attname for model_field in enumerate(User._meta.fields)]
-        dealership_fields_list = [model_field[1].attname for model_field in enumerate(Dealership._meta.fields)]
-        user_profile_fields_list = [model_field[1].attname for model_field in enumerate(UserProfile._meta.fields)]
-
-        # Use the StringIO class to create a file-like object from the CSV string
-        f = StringIO(csv_string)
-        # Create a DictReader object
-        reader = csv.DictReader(f)
-
-        # Read the CSV string into a list of dictionaries
-        data = list(reader)
-
-        csv_keys = data[0].keys()
-        unique_user_field_for_dict, unique_user_field_for_user_query, unique_user_field_for_user_profile_query, \
-        scenario = get_unique_field_name_for_query_and_dict(csv_keys)
-
-        # Loop through the list of dictionaries
-        for row in data:
-            user = User()
-            dealership = Dealership()
-            user_profile = UserProfile()
-            for key, value in row.items():
-                if str(key).endswith("id"):
-                    value = int(value)
-
-                if key.replace("user_", "") in user_fields_list and key != "is_active":  # User
-                    user.__setattr__(key.replace("user_", ""), value)
-                elif key.replace("dealership_", "") in dealership_fields_list:  # Dealership
-                    dealership.__setattr__(key.replace("dealership_", ""), value)
-                elif key in user_profile_fields_list:  # User Profile
-                    user_profile.__setattr__(key, value)
-
-            # if username does not exist in the input
-            if scenario != 2:
-                user.username = user.first_name + user.last_name
-
-            user_list.append(user)
-            dealership_list.append(dealership)
-            user_profile_list.append(user_profile)
-            user_profile.user = user
-            user_profile.dealership = dealership
-
-        return user_list, dealership_list, user_profile_list, csv_keys
 
 
 admin.site.register(UserProfile, UserProfileAdmin)
