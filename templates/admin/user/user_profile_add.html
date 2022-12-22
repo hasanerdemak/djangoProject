@@ -267,167 +267,195 @@
 
         <!-- List of created and updated objects -->
     {% else %}
-        <div class="grid-container">
-            <div class="grid-child">
-                <h4>Created Users</h4>
-                {% if created_users %}
-                    <table class="table" id="created-users-table">
-                        <thead>
-                        <tr>
-                            <th scope="col">username</th>
-                            <th scope="col">password</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for created_user, password in created_users %}
+        <div style="display: flex; flex-wrap: wrap">
+            <div style="border-right: 1px solid black; padding: 20px; width: 30%">
+                <div>
+                    <h4>Created Users</h4>
+                    {% if created_users %}
+                        <table class="table" id="created-users-table">
+                            <thead>
                             <tr>
-                                <th scope="row">
-                                    <a href="/admin/auth/user/{{ created_user.id }}/change/">{{ created_user.username }}</a>
-                                </th>
-                                <td>{{ password }}</td>
+                                <th scope="col">username</th>
+                                <th scope="col">password</th>
                             </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="tableToCSV()" style="margin: 5px">
-                            Download as .csv
-                        </button>
-                        <button type="button" class="btn btn-primary btn-sm" id="download-excel-button"
-                                style="margin: 5px">
-                            Download as .xlsx
-                        </button>
-                    </div>
-                {% else %}
-                    <div class="alert alert-danger">There are no created users.</div>
-                {% endif %}
-            </div>
-            <div class="grid-child">
-                <h4>Updated Users</h4>
-                {% if updated_users %}
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th scope="col">username</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for updated_user in updated_users %}
+                            </thead>
+                            <tbody>
+                            {% for created_user, password in created_users %}
+                                <tr>
+                                    <th scope="row">
+                                        <a href="/admin/auth/user/{{ created_user.id }}/change/">{{ created_user.username }}</a>
+                                    </th>
+                                    <td>{{ password }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="tableToCSV()"
+                                    style="margin: 5px">
+                                Download as .csv
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm" id="download-excel-button"
+                                    style="margin: 5px">
+                                Download as .xlsx
+                            </button>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-danger">There are no created users.</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <h4>Updated Users</h4>
+                    {% if updated_users %}
+                        <table class="table">
+                            <thead>
                             <tr>
-                                <th scope="row">
-                                    <a href="/admin/auth/user/{{ updated_user.id }}/change/">{{ updated_user.username }}</a>
-                                </th>
+                                <th scope="col">username</th>
                             </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                            {% for updated_user in updated_users %}
+                                <tr>
+                                    <th scope="row">
+                                        <a href="/admin/auth/user/{{ updated_user.id }}/change/">{{ updated_user.username }}</a>
+                                    </th>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
 
-                {% else %}
-                    <div class="alert alert-danger">There are no updated users.</div>
-                {% endif %}
-            </div>
-
-            <div class="grid-child">
-                <h4>Created Dealerships</h4>
-                {% if created_dealerships %}
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th scope="col">dealership name</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for created_dealership in created_dealerships %}
-                            <tr>
-                                <th scope="row">
-                                    <a href="/admin/dealership/dealership/{{ created_dealership.id }}/change/">{{ created_dealership.name }}</a>
-                                </th>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <div class="alert alert-danger">There are no created dealerships.</div>
-                {% endif %}
-            </div>
-            <div class="grid-child">
-                <h4>Updated Dealerships</h4>
-                {% if updated_dealerships %}
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th scope="col">dealership name</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for updated_dealership in updated_dealerships %}
-                            <tr>
-                                <th scope="row">
-                                    <a href="/admin/dealership/dealership/{{ updated_dealership.id }}/change/">{{ updated_dealership.name }}</a>
-                                </th>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <div class="alert alert-danger">There are no updated dealerships.</div>
-                {% endif %}
+                    {% else %}
+                        <div class="alert alert-danger">There are no updated users.</div>
+                    {% endif %}
+                </div>
             </div>
 
-            <div class="grid-child">
-                <h4>Created User Profiles</h4>
-                {% if created_user_profiles %}
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th scope="col">username - dealership name</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for created_user_profile in created_user_profiles %}
+            <div style="border-right: 1px solid black; padding: 20px; width: 40%; background: whitesmoke">
+                <div>
+                    <h4 style="font-weight: bold; font-size: 30px">Created User Profiles</h4>
+                    {% if created_user_profiles %}
+                        <table class="table">
+                            <thead>
                             <tr>
-                                <th scope="row">
-                                    <a href="/admin/user/userprofile/{{ created_user_profile.id }}/change/">{{ created_user_profile }}</a>
-                                </th>
+                                <th scope="col">username - dealership name</th>
                             </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <div class="alert alert-danger">There are no created user profiles.</div>
-                {% endif %}
-            </div>
-            <div class="grid-child">
-                <h4>Updated User Profiles</h4>
-                {% if updated_user_profiles %}
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th scope="col">username - dealership name</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for updated_user_profile in updated_user_profiles %}
+                            </thead>
+                            <tbody>
+                            {% for created_user_profile in created_user_profiles %}
+                                <tr>
+                                    <th scope="row">
+                                        <a href="/admin/user/userprofile/{{ created_user_profile.id }}/change/">{{ created_user_profile }}</a>
+                                    </th>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="alert alert-danger">There are no created user profiles.</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <h4 style="font-weight: bold; font-size: 28px">Updated User Profiles</h4>
+                    {% if updated_user_profiles %}
+                        <table class="table">
+                            <thead>
                             <tr>
-                                <th scope="row">
-                                    <a href="/admin/user/userprofile/{{ updated_user_profile.id }}/change/">{{ updated_user_profile }}</a>
-                                </th>
+                                <th scope="col">username - dealership name</th>
                             </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
-                {% else %}
-                    <div class="alert alert-danger">There are no updated user profiles.</div>
-                {% endif %}
+                            </thead>
+                            <tbody>
+                            {% for updated_user_profile in updated_user_profiles %}
+                                <tr>
+                                    <th scope="row">
+                                        <a href="/admin/user/userprofile/{{ updated_user_profile.id }}/change/">{{ updated_user_profile }}</a>
+                                    </th>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="alert alert-danger">There are no updated user profiles.</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <h4 style="font-weight: bold; font-size: 26px">Deleted User Profiles</h4>
+                    {% if deleted_user_profiles %}
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th scope="col">username - dealership name</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for deleted_user_profile in deleted_user_profiles %}
+                                <tr>
+                                    <th scope="row">{{ deleted_user_profile }}</th>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="alert alert-danger">There are no deleted user profiles.</div>
+                    {% endif %}
+                </div>
             </div>
 
-            <form action={% url 'admin:user_userprofile_changelist' %}>
-                <button type="submit" class="btn btn-primary">
-                    Go To The User Profile Page
-                </button>
-            </form>
+            <div style="padding: 20px; width: 30%">
+                <div>
+                    <h4>Created Dealerships</h4>
+                    {% if created_dealerships %}
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th scope="col">dealership name</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for created_dealership in created_dealerships %}
+                                <tr>
+                                    <th scope="row">
+                                        <a href="/admin/dealership/dealership/{{ created_dealership.id }}/change/">{{ created_dealership.name }}</a>
+                                    </th>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="alert alert-danger">There are no created dealerships.</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <h4>Updated Dealerships</h4>
+                    {% if updated_dealerships %}
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th scope="col">dealership name</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for updated_dealership in updated_dealerships %}
+                                <tr>
+                                    <th scope="row">
+                                        <a href="/admin/dealership/dealership/{{ updated_dealership.id }}/change/">{{ updated_dealership.name }}</a>
+                                    </th>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    {% else %}
+                        <div class="alert alert-danger">There are no updated dealerships.</div>
+                    {% endif %}
+                </div>
+            </div>
+
 
         </div>
+        <form action={% url 'admin:user_userprofile_changelist' %}>
+            <button type="submit" class="btn btn-primary">
+                Go To The User Profile Page
+            </button>
+        </form>
     {% endif %}
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.15.5/xlsx.full.min.js"></script>
