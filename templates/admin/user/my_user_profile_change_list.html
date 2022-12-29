@@ -18,7 +18,7 @@
     </style>
 
     <div>
-        <form action="{% url 'admin:addUserProfile' %}" method="POST">
+        <form action="{% url 'admin:add-user-profile' %}" method="POST">
             {% csrf_token %}
                 <button type="submit">Add User Profile From Csv</button>
         </form>

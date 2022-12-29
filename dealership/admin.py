@@ -39,7 +39,7 @@ class DealershipAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            re_path(r'^updateDealerships$', self.admin_site.admin_view(self.check_buttons), name='updateDealerships'),
+            re_path(r'^update-dealerships$', self.admin_site.admin_view(self.check_buttons), name='update-dealerships'),
         ]
         return my_urls + urls
 
@@ -71,8 +71,7 @@ class DealershipAdmin(admin.ModelAdmin):
 
         return TemplateResponse(request, "dealership/dealership_edit.html", context)
 
-    @staticmethod
-    def update_dealerships(request):
+    def update_dealerships(self, request):
         if request.method == "GET":
             return redirect("/admin/dealership/dealership")
         else:  # POST

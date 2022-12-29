@@ -197,6 +197,7 @@
         </button>
     </form>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.15.5/xlsx.full.min.js"></script>
     <script type="text/javascript">
         function tableToCSV() {
 
@@ -220,13 +221,13 @@
 
             // Create CSV file object and feed
             // our csv_data into it
-            CSVFile = new Blob([csv_data], {
+            const CSVFile = new Blob([csv_data], {
                 type: "text/csv"
             });
 
             // Create to temporary link to initiate
             // download process
-            var temp_link = document.createElement('a');
+            const temp_link = document.createElement('a');
 
             // Download csv file
             temp_link.download = "user_passwords.csv";

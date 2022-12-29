@@ -18,7 +18,7 @@
     </style>
 
     <div>
-        <form action="{% url 'admin:updateDealerships' %}" method="POST">
+        <form action="{% url 'admin:update-dealerships' %}" method="POST">
             {% csrf_token %}
                 <button type="submit">Select & Update</button>
         </form>

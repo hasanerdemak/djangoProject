@@ -1,6 +1,6 @@
 import json
 import operator
-import string
+from concurrent.futures import ThreadPoolExecutor
 from functools import reduce
 
 from django.conf import settings
@@ -20,11 +20,13 @@ from .models import UserProfile
 class UserProfileAdmin(admin.ModelAdmin):
     change_list_template = "user/my_user_profile_change_list.html"
     list_display = ["user", "dealership", "is_active"]
-    readonly_fields = ["dealership_name", "first_name", "last_name", "email"]
-    fields = ["user", "dealership", "is_active", "dealership_name", "first_name", "last_name", "email"]
+    readonly_fields = ["username", "dealership_name", "first_name", "last_name", "email"]
+    fieldsets = [
+        (None, {'fields': ["user", "dealership", "is_active"]}),
+        ('User Information', {'fields': ["username", "first_name", "last_name", "email"]}),
+        ('Dealership Information', {'fields': ["dealership_name"]}),
+    ]
     search_fields = ["user__username", "user__first_name", "user__last_name", "user__email", "dealership__name"]
-    # A string containing all the allowed characters for the random password generator
-    characters = string.ascii_letters + string.digits + string.punctuation
 
     class Meta:
         model = UserProfile
@@ -32,10 +34,10 @@ class UserProfileAdmin(admin.ModelAdmin):
     def get_urls(self):
         # Get the default URLs for the UserProfileAdmin view
         urls = super().get_urls()
-        # Add a custom URL for the addUserProfile view
+        # Add a custom URL for the add_user_profile and show_info views
         my_urls = [
-            re_path(r'^addUserProfile$', self.admin_site.admin_view(self.check_buttons), name='addUserProfile'),
-            re_path(r'^show_info$', self.admin_site.admin_view(self.show_info), name='show_info'),
+            re_path(r'^add-user-profile$', self.admin_site.admin_view(self.check_buttons), name='add-user-profile'),
+            re_path(r'^show-info$', self.admin_site.admin_view(self.show_info), name='show-info'),
         ]
         return my_urls + urls
 
@@ -160,9 +162,6 @@ class UserProfileAdmin(admin.ModelAdmin):
         if request.method == "GET":
             return redirect("/admin/user/userprofile")
         else:  # POST
-            created_users = []
-            created_dealerships = []
-            created_user_profiles = []
             password_list_for_users = []
 
             create_if_not_exist = True if (request.POST.get("form-check-box-1") is not None) else False
@@ -200,33 +199,24 @@ class UserProfileAdmin(admin.ModelAdmin):
                 update_same_usernames(user_list, db_user_ids_and_usernames.values_list("username", flat=True))
 
             # Get existing and non-existing users to update or create them
-            db_users_unique_values_set = set(
-                db_user_ids_and_usernames.values_list(unique_user_field_for_user_query, flat=True))
-            existing_users = [user for user in user_list if
-                              getattr(user, unique_user_field_for_user_query) in db_users_unique_values_set]
-            non_existing_users = [user for user in user_list if
-                                  getattr(user, unique_user_field_for_user_query) not in db_users_unique_values_set]
-
+            existing_users, non_existing_users = get_existing_and_non_existing_users(user_list,
+                                                                                     unique_user_field_for_user_query,
+                                                                                     db_user_ids_and_usernames)
             # Get existing and non-existing dealerships to update or create them
-            existing_dealerships = [dealership for dealership in dealership_list if
-                                    dealership.id in db_dealership_ids_set]
-            non_existing_dealerships = [dealership for dealership in dealership_list if
-                                        dealership.id not in db_dealership_ids_set]
-
+            existing_dealerships, non_existing_dealerships = get_existing_and_non_existing_dealerships(dealership_list,
+                                                                                                       db_dealership_ids_set)
             # Get existing and non-existing user_profiles to update or create them
-            existing_user_profiles = [user_profile for user_profile in user_profile_list if (
-                getattr(user_profile.user, unique_user_field_for_user_query),
-                user_profile.dealership_id) in db_user_profile_unique_values_set]
-            non_existing_user_profiles = [user_profile for user_profile in user_profile_list if (
-                getattr(user_profile.user, unique_user_field_for_user_query),
-                user_profile.dealership_id) not in db_user_profile_unique_values_set]
+            existing_user_profiles, non_existing_user_profiles = get_existing_and_non_existing_user_profiles(
+                user_profile_list, unique_user_field_for_user_query, db_user_profile_unique_values_set)
 
             if create_if_not_exist:
                 # Create non-existing Users
-                created_users, password_list_for_users = self.create_users(non_existing_users)
+                password_list_for_users = self.create_users(non_existing_users)
                 # Create non-existing Dealerships
-                created_dealerships = self.create_dealerships(non_existing_dealerships)
+                self.create_dealerships(non_existing_dealerships)
             else:
+                # Since these objects are not created, empty the lists to not show them in the template.
+                non_existing_users, non_existing_dealerships = [], []
                 # If non-existing users and dealerships was not created,
                 # then send only user profiles that have existing users and dealerships
                 non_existing_user_profiles = [user_profile for user_profile in non_existing_user_profiles if
@@ -246,7 +236,7 @@ class UserProfileAdmin(admin.ModelAdmin):
                         user_profile.user.id = user_id
                         user_profile.user = user_profile.user
 
-            created_user_profiles = self.create_user_profiles(non_existing_user_profiles)
+            self.create_user_profiles(non_existing_user_profiles)
 
             # We need to have ids of the User Profiles to update them and add link to all of them in template.
             # To do that get user profiles values by user_id and dealership_id
@@ -267,20 +257,18 @@ class UserProfileAdmin(admin.ModelAdmin):
             self.update_dealerships(existing_dealerships, csv_keys)
             self.update_user_profiles(existing_user_profiles, csv_keys)
 
-            created_user_profiles = [user_profile for user_profile in created_user_profiles if
-                                     user_profile.is_active == "1"]
-            updated_user_profiles = [user_profile for user_profile in existing_user_profiles if
-                                     user_profile.is_active == "1"]
-            deleted_user_profiles = [user_profile for user_profile in user_profile_list if
-                                     user_profile.is_active == "0"]
+            # Separate the User Profile lists by the is active field indicating whether User Profile has been deleted.
+            non_existing_user_profiles = list(filter(lambda x: x.is_active == "1", non_existing_user_profiles))
+            existing_user_profiles = list(filter(lambda x: x.is_active == "1", existing_user_profiles))
+            deleted_user_profiles = list(filter(lambda x: x.is_active == "0", user_profile_list))
             # Create context by serializing lists
             context = {
-                "created_users": serialize_objects(created_users),
-                "created_dealerships": serialize_objects(created_dealerships),
-                "created_user_profiles": serialize_objects(created_user_profiles),
+                "created_users": serialize_objects(non_existing_users),
+                "created_dealerships": serialize_objects(non_existing_dealerships),
+                "created_user_profiles": serialize_objects(non_existing_user_profiles),
                 "updated_users": serialize_objects(existing_users),
                 "updated_dealerships": serialize_objects(existing_dealerships),
-                "updated_user_profiles": serialize_objects(updated_user_profiles),
+                "updated_user_profiles": serialize_objects(existing_user_profiles),
                 "deleted_user_profiles": serialize_objects(deleted_user_profiles),
                 "password_list_for_users": password_list_for_users,
             }
@@ -291,37 +279,36 @@ class UserProfileAdmin(admin.ModelAdmin):
             signed_data = signer.sign_object(compressed_context)
 
             # Add signed data to the new url and redirect to this url
-            return HttpResponseRedirect(f"{reverse('admin:show_info')}?data={signed_data}")
+            return HttpResponseRedirect(f"{reverse('admin:show-info')}?data={signed_data}")
 
     def create_users(self, user_list_to_create):
-        created_users = []
-        password_list_for_users = [get_random_string(8, self.characters) for _ in range(len(user_list_to_create))]
-        for user, password in zip(user_list_to_create, password_list_for_users):
-            user.set_password(password)
+        password_list_for_users = [get_random_string(8) for _ in range(len(user_list_to_create))]
+        # Use multi threading to speed up the set_password process of the users
+        with ThreadPoolExecutor() as executor:
+            executor.map(User.set_password, user_list_to_create, password_list_for_users)
+
         try:
-            created_users = User.objects.bulk_create(user_list_to_create)
+            User.objects.bulk_create(user_list_to_create)
         except Exception as e:
             print(f"{e} Happened When Creating User")
 
-        return created_users, password_list_for_users
+        return password_list_for_users
 
     def create_dealerships(self, dealership_list_to_create):
-        created_dealerships = []
         try:
-            created_dealerships = Dealership.objects.bulk_create(dealership_list_to_create)
+            Dealership.objects.bulk_create(dealership_list_to_create)
         except Exception as e:
             print(f"{e} Happened When Creating Dealership")
 
-        return created_dealerships
+        return ""
 
     def create_user_profiles(self, user_profiles_list_to_create):
-        created_user_profiles = []
         try:
-            created_user_profiles = UserProfile.objects.bulk_create(user_profiles_list_to_create)
+            UserProfile.objects.bulk_create(user_profiles_list_to_create)
         except Exception as e:
             print(f"{e} Happened When Creating User Profile")
 
-        return created_user_profiles
+        return ""
 
     def update_users(self, updatable_users, dict_keys):
         try:

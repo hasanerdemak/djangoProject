@@ -263,7 +263,6 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.15.5/xlsx.full.min.js"></script>
     <!-- CSV UPLOAD SCRIPT -->
     <script type="text/javascript">
         const reader = new FileReader()
@@ -336,10 +335,6 @@
                 console.error(e);
             }
         }
-
-        window.onbeforeunload = function () {
-            document.getElementById("csv-input-form").submit()
-        };
 
         function paintWrongSpaces() {
             const table = document.getElementById('user-profile-table');

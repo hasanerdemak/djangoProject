@@ -208,6 +208,38 @@ def get_col_type(col_name):
     return col_type
 
 
+def get_existing_and_non_existing_users(user_list, unique_user_field_for_user_query, db_user_ids_and_usernames):
+    db_users_unique_values_set = set(db_user_ids_and_usernames.values_list(unique_user_field_for_user_query, flat=True))
+
+    existing_users = [user for user in user_list if
+                      getattr(user, unique_user_field_for_user_query) in db_users_unique_values_set]
+    non_existing_users = [user for user in user_list if
+                          getattr(user, unique_user_field_for_user_query) not in db_users_unique_values_set]
+
+    return existing_users, non_existing_users
+
+
+def get_existing_and_non_existing_dealerships(dealership_list, db_dealership_ids_set):
+    existing_dealerships = [dealership for dealership in dealership_list if
+                            dealership.id in db_dealership_ids_set]
+    non_existing_dealerships = [dealership for dealership in dealership_list if
+                                dealership.id not in db_dealership_ids_set]
+
+    return existing_dealerships, non_existing_dealerships
+
+
+def get_existing_and_non_existing_user_profiles(user_profile_list, unique_user_field_for_user_query,
+                                                db_user_profile_unique_values_set):
+    existing_user_profiles = [user_profile for user_profile in user_profile_list if (
+        getattr(user_profile.user, unique_user_field_for_user_query),
+        user_profile.dealership_id) in db_user_profile_unique_values_set]
+    non_existing_user_profiles = [user_profile for user_profile in user_profile_list if (
+        getattr(user_profile.user, unique_user_field_for_user_query),
+        user_profile.dealership_id) not in db_user_profile_unique_values_set]
+
+    return existing_user_profiles, non_existing_user_profiles
+
+
 def check_which_scenario(text_keys):
     if 'user_id' in text_keys:
         return 1
